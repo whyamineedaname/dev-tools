@@ -1697,7 +1697,8 @@ async function resolveProcessNames(pids: number[]): Promise<Map<number, string>>
 }
 
 async function listWindowsPorts(port?: number): Promise<PortRow[]> {
-  const args = ['-ano', '-p', 'tcp']
+  // 注意：不能用 -p tcp，它只显示 IPv4 TCP；vite 等工具监听在 IPv6（[::1]）时会被漏掉
+  const args = ['-ano']
   const result = await runCommand('netstat', args)
   if (result.code !== 0 && !result.stdout.trim()) {
     throw new Error(result.stderr.trim() || 'netstat 执行失败')
@@ -1770,68 +1771,76 @@ ipcMain.handle('net:killPid', async (_event, pid: number) => {
   }
 })
 
-ipcMain.handle('net:dnsLookup', async (_event, hostname: string, types?: string[]) => {
-  const host = String(hostname || '').trim().replace(/^https?:\/\//i, '').split('/')[0]
-  if (!host) return { success: false as const, error: '请输入域名' }
-  const wanted = (types && types.length ? types : ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS']).map((t) =>
-    t.toUpperCase()
-  )
-  const records: Array<{ type: string; value: string }> = []
-  const errors: string[] = []
+ipcMain.handle('net:dnsLookup', async (_event, hostname: string, types?: string[]): Promise<
+  | { success: true; data: { hostname: string; records: Array<{ type: string; value: string }> } }
+  | { success: false; error: string }
+> => {
+  try {
+    const host = String(hostname || '').trim().replace(/^https?:\/\//i, '').split('/')[0]
+    if (!host) return { success: false, error: '请输入域名' }
+    const wanted = (types && types.length ? types : ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS']).map((t) =>
+      String(t || '').toUpperCase()
+    )
+    const records: Array<{ type: string; value: string }> = []
+    const errors: string[] = []
 
-  async function safe(type: string, fn: () => Promise<void>) {
-    try {
-      await fn()
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e)
-      if (!/ENODATA|ENOTFOUND|SERVFAIL/i.test(msg)) errors.push(`${type}: ${msg}`)
+    async function safe(type: string, fn: () => Promise<void>) {
+      try {
+        await fn()
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e)
+        if (!/ENODATA|ENOTFOUND|SERVFAIL/i.test(msg)) errors.push(`${type}: ${msg}`)
+      }
     }
-  }
 
-  if (wanted.includes('A')) {
-    await safe('A', async () => {
-      const list = await dns.resolve4(host)
-      for (const ip of list) records.push({ type: 'A', value: ip })
-    })
-  }
-  if (wanted.includes('AAAA')) {
-    await safe('AAAA', async () => {
-      const list = await dns.resolve6(host)
-      for (const ip of list) records.push({ type: 'AAAA', value: ip })
-    })
-  }
-  if (wanted.includes('CNAME')) {
-    await safe('CNAME', async () => {
-      const list = await dns.resolveCname(host)
-      for (const c of list) records.push({ type: 'CNAME', value: c })
-    })
-  }
-  if (wanted.includes('MX')) {
-    await safe('MX', async () => {
-      const list = await dns.resolveMx(host)
-      for (const mx of list) records.push({ type: 'MX', value: `${mx.priority} ${mx.exchange}` })
-    })
-  }
-  if (wanted.includes('TXT')) {
-    await safe('TXT', async () => {
-      const list = await dns.resolveTxt(host)
-      for (const txt of list) records.push({ type: 'TXT', value: txt.join('') })
-    })
-  }
-  if (wanted.includes('NS')) {
-    await safe('NS', async () => {
-      const list = await dns.resolveNs(host)
-      for (const ns of list) records.push({ type: 'NS', value: ns })
-    })
-  }
+    if (wanted.includes('A')) {
+      await safe('A', async () => {
+        const list = await dns.resolve4(host)
+        for (const ip of list) records.push({ type: 'A', value: String(ip) })
+      })
+    }
+    if (wanted.includes('AAAA')) {
+      await safe('AAAA', async () => {
+        const list = await dns.resolve6(host)
+        for (const ip of list) records.push({ type: 'AAAA', value: String(ip) })
+      })
+    }
+    if (wanted.includes('CNAME')) {
+      await safe('CNAME', async () => {
+        const list = await dns.resolveCname(host)
+        for (const c of list) records.push({ type: 'CNAME', value: String(c) })
+      })
+    }
+    if (wanted.includes('MX')) {
+      await safe('MX', async () => {
+        const list = await dns.resolveMx(host)
+        for (const mx of list) records.push({ type: 'MX', value: `${String(mx.priority)} ${String(mx.exchange)}` })
+      })
+    }
+    if (wanted.includes('TXT')) {
+      await safe('TXT', async () => {
+        const list = await dns.resolveTxt(host)
+        for (const txt of list) records.push({ type: 'TXT', value: txt.join('') })
+      })
+    }
+    if (wanted.includes('NS')) {
+      await safe('NS', async () => {
+        const list = await dns.resolveNs(host)
+        for (const ns of list) records.push({ type: 'NS', value: String(ns) })
+      })
+    }
 
-  if (!records.length && errors.length) {
-    return { success: false as const, error: errors.join('; ') }
+    if (!records.length && errors.length) {
+      return { success: false, error: errors.join('; ') }
+    }
+    if (!records.length) {
+      return { success: false, error: `未查询到记录：${host}` }
+    }
+    return { success: true, data: { hostname: host, records } }
+  } catch (e: unknown) {
+    // 兜底：任何内部异常都转成可序列化的字符串返回，避免 Electron 报 “An object could not be cloned”
+    return { success: false, error: `查询失败：${e instanceof Error ? e.message : String(e)}` }
   }
-  if (!records.length) {
-    return { success: false as const, error: `未查询到记录：${host}` }
-  }
-  return { success: true as const, data: { hostname: host, records } }
 })
 
 // ==================== 剪贴板历史 ====================
