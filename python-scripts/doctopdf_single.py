@@ -7,6 +7,13 @@ import sys
 import os
 import hashlib
 
+# 强制 UTF-8 输出：Windows 下 Python 管道默认用 GBK/cp936，会导致 Electron 侧中文乱码
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 # 彻底替换reportlab的md5函数
 def safe_md5(data):
     try:

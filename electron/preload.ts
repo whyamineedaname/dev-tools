@@ -109,8 +109,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   net: {
     listPorts: (port?: number) => ipcRenderer.invoke('net:listPorts', port),
     killPid: (pid: number) => ipcRenderer.invoke('net:killPid', pid),
-    dnsLookup: (hostname: string, types?: string[]) =>
-      ipcRenderer.invoke('net:dnsLookup', hostname, types)
+    dnsLookup: async (hostname: string, types?: string[]) => {
+      // 兜底：即使 invoke 序列化失败也返回可读错误，避免渲染层抛 “An object could not be cloned”
+      try {
+        return await ipcRenderer.invoke('net:dnsLookup', hostname, types)
+      } catch (e: unknown) {
+        const name = e instanceof Error ? `${e.name}: ` : ''
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error('[preload] dnsLookup failed:', e)
+        return { success: false, error: `DNS 调用失败：${name}${msg}` }
+      }
+    }
   },
   bili: {
     info: (input: string, cookie?: string) =>

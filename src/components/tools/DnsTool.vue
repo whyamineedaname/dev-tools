@@ -24,7 +24,7 @@ async function lookup() {
   resolvedHost.value = ''
   loading.value = true
   try {
-    const types = selected.value.length ? selected.value : undefined
+    const types = selected.value.length ? [...selected.value] : undefined
     const result = await window.electronAPI.net.dnsLookup(hostname.value, types)
     if (!result.success) {
       errorMsg.value = result.error
@@ -33,7 +33,12 @@ async function lookup() {
     resolvedHost.value = result.data.hostname
     records.value = result.data.records
   } catch (e: unknown) {
-    errorMsg.value = e instanceof Error ? e.message : String(e)
+    // 诊断：显示完整错误来源（name/stack），便于定位 “An object could not be cloned” 的出处
+    const name = e instanceof Error ? e.name : 'Unknown'
+    const msg = e instanceof Error ? e.message : String(e)
+    const stack = e instanceof Error && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : ''
+    console.error('[DnsTool] dnsLookup 调用失败:', e)
+    errorMsg.value = `❌ ${name}: ${msg}${stack ? `\n${stack}` : ''}`
   } finally {
     loading.value = false
   }

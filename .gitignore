@@ -31,3 +31,11 @@ packages/scratch-gui/dist
 *.codegraph
 .codegraph/
 .cursor/
+
+# Electron 构建产物与临时目录
+dist-electron/
+release/
+main.js
+*.pyc
+__pycache__/
+.playwright-mcp/

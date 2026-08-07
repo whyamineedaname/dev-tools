@@ -4,16 +4,18 @@ Windows 桌面工具箱。把常用的文本处理、文档转换、阅读、取
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
+> 最新版本：**v1.0.0** · [前往 GitHub Releases 下载](https://github.com/whyamineedaname/dev-tools/releases)
+
 ## 快速开始
 
 ### 1. 下载应用
 
-从发布包中任选其一：
+从 [GitHub Releases 页面](https://github.com/whyamineedaname/dev-tools/releases) 下载最新版本，任选其一：
 
 | 文件 | 适合谁 |
 |------|--------|
-| `兔丝-x.x.x-portable.exe` | **推荐**。便携版，拷贝到任意目录双击即可，无需安装 |
-| `兔丝 Setup x.x.x.exe` | 安装版，可自定义安装目录，并创建桌面快捷方式 |
+| `兔丝-1.0.0-portable.exe` | **推荐**。便携版，拷贝到任意目录双击即可，无需安装 |
+| `兔丝 Setup 1.0.0.exe` | 安装版，可自定义安装目录，并创建桌面快捷方式 |
 
 系统要求：Windows 10 / 11（64 位）。
 

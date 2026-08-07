@@ -45,8 +45,9 @@ export function useReaderAnnotations() {
     try {
       const doc: ReaderAnnotationDoc = {
         fileHash: fileHash.value,
-        inks: inks.value,
-        notes: notes.value,
+        // 展开为普通数组：Vue ref 数组是响应式 Proxy，直接传给 contextBridge 会报 “An object could not be cloned”
+        inks: [...inks.value],
+        notes: [...notes.value],
         updatedAt: Date.now()
       }
       const res = await window.electronAPI.reader.saveAnnotations(doc)

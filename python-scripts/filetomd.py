@@ -2,6 +2,13 @@ import sys
 import os
 from markitdown import MarkItDown
 
+# 强制 UTF-8 输出：Windows 下 Python 管道默认用 GBK/cp936，会导致 Electron 侧中文乱码
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 def get_default_output_filename(input_path):
     """根据输入文件路径生成默认的输出文件名"""
     # 获取文件名（去掉路径）

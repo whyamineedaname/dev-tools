@@ -1045,7 +1045,7 @@ ipcMain.handle('audio:separate', async (_event, payload: {
     const args = [scriptPath, inputPath, outputDir, mode]
     if (payload.toMp3) args.push('--mp3')
 
-    const proc = spawn('python', args)
+    const proc = spawn('python', args, { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } })
     activeSeparateProc = proc
 
     let buffer = ''
@@ -1775,6 +1775,15 @@ ipcMain.handle('net:dnsLookup', async (_event, hostname: string, types?: string[
   | { success: true; data: { hostname: string; records: Array<{ type: string; value: string }> } }
   | { success: false; error: string }
 > => {
+  const logLine = (msg: string) => {
+    try {
+      const { appendFileSync } = require('fs') as typeof import('fs')
+      appendFileSync(join(app.getPath('userData'), 'dns-debug.log'), `[${new Date().toISOString()}] ${msg}\n`)
+    } catch {
+      /* 日志失败不影响功能 */
+    }
+  }
+  logLine(`CALL hostname=${JSON.stringify(hostname)} types=${JSON.stringify(types)}`)
   try {
     const host = String(hostname || '').trim().replace(/^https?:\/\//i, '').split('/')[0]
     if (!host) return { success: false, error: '请输入域名' }
@@ -1789,6 +1798,7 @@ ipcMain.handle('net:dnsLookup', async (_event, hostname: string, types?: string[
         await fn()
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e)
+        logLine(`SAFE-CATCH ${type} msg=${JSON.stringify(msg)} ctor=${e === null ? 'null' : (e as object).constructor?.name}`)
         if (!/ENODATA|ENOTFOUND|SERVFAIL/i.test(msg)) errors.push(`${type}: ${msg}`)
       }
     }
@@ -1831,15 +1841,20 @@ ipcMain.handle('net:dnsLookup', async (_event, hostname: string, types?: string[
     }
 
     if (!records.length && errors.length) {
+      logLine(`RETURN errors-only ${JSON.stringify(errors)}`)
       return { success: false, error: errors.join('; ') }
     }
     if (!records.length) {
+      logLine(`RETURN empty host=${host}`)
       return { success: false, error: `未查询到记录：${host}` }
     }
+    logLine(`RETURN ok records=${records.length}`)
     return { success: true, data: { hostname: host, records } }
   } catch (e: unknown) {
     // 兜底：任何内部异常都转成可序列化的字符串返回，避免 Electron 报 “An object could not be cloned”
-    return { success: false, error: `查询失败：${e instanceof Error ? e.message : String(e)}` }
+    const errStr = e instanceof Error ? e.message : String(e)
+    logLine(`OUTER-CATCH ${JSON.stringify(errStr)} ctor=${e === null ? 'null' : (e as object).constructor?.name}`)
+    return { success: false, error: `查询失败：${errStr}` }
   }
 })
 
@@ -2044,7 +2059,7 @@ ipcMain.handle('clipboard:getImageDataUrl', async (_event, id: string) => {
 
 function runPythonScript(scriptPath: string, args: string[]): Promise<{ success: boolean; output: string; error: string }> {
   return new Promise((resolve) => {
-    const python = spawn('python', [scriptPath, ...args])
+    const python = spawn('python', [scriptPath, ...args], { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } })
 
     let stdout = ''
     let stderr = ''
