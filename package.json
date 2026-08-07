@@ -69,16 +69,18 @@
         "nsis",
         "portable"
       ],
-      "icon": "electron/assets/logo.ico"
+      "icon": "electron/assets/logo.ico",
+      "artifactName": "tools-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "兔丝"
+      "shortcutName": "兔丝",
+      "artifactName": "tools-Setup-${version}.${ext}"
     },
     "portable": {
-      "artifactName": "${productName}-${version}-portable.exe"
+      "artifactName": "tools-${version}-portable.${ext}"
     }
   }
 }
