@@ -1,0 +1,76 @@
+@font-face {
+  font-family: 'MiaoZiDongMan';
+  src: url('./assets/font/miaozidongmanti-regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 主题变量默认值（主题 store 加载前使用；加载后由 applyTheme 覆盖） */
+:root {
+  --tusi-main-bg: url('./assets/images/bg.webp');
+  --tusi-right-bottom-bg: url('./assets/images/bottom-right-bg.png');
+  --tusi-nav-top-bg: url('./assets/images/top-bg.png');
+  --tusi-nav-drawer-bg: url('./assets/icons/side-nav-drawer.png');
+  --tusi-nav-menu-bg: url('./assets/images/nav-bg.png');
+  --tusi-nav-bottom-bg: url('./assets/images/mid-bottom-bg.webp');
+  --tusi-primary: #ff7eb6;
+  --tusi-primary-hover: #ff5c9d;
+  --tusi-sidebar-bg: #201a1d;
+  --tusi-nav-block-bg: #101010;
+  --tusi-accent-text: #f5c6d6;
+  --tusi-dim-text: #e8b8cc;
+  --tusi-content-bg: rgba(255, 245, 248, 0.62);
+}
+
+html, body, #app {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'MiaoZiDongMan', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  color: #333;
+  /* 主画面背景由 App.vue 的 .app-bg 固定背景层渲染（避免 background-attachment: fixed
+     与 CSS 变量组合时切换主题不重绘的 Chromium 问题）；此处仅留底色兜底 */
+  background: #fff5f8;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #fff0f5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ffc2d9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ff9ec4;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: none;
+}
+
+input, textarea {
+  font-family: inherit;
+  outline: none;
+}

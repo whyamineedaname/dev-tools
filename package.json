@@ -1,0 +1,84 @@
+{
+  "name": "dev-tools",
+  "version": "0.1.0",
+  "description": "兔丝 - Windows 桌面应用",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k -n VITE,MAIN,ELECTRON -c blue,green,yellow \"vite\" \"npm run dev:electron\" \"wait-on tcp:33445 && cross-env NODE_ENV=development electron .\"",
+    "dev:electron": "node -e \"require('fs').cpSync('electron/assets','dist-electron/assets',{recursive:true})\" && esbuild electron/main.ts electron/preload.ts electron/colorPickerPreload.ts --bundle --outdir=dist-electron --platform=node --external:electron --external:sharp --watch",
+    "typecheck": "vue-tsc --noEmit",
+    "build": "vite build && npm run build:electron && electron-builder",
+    "build:electron": "esbuild electron/main.ts electron/preload.ts electron/colorPickerPreload.ts --bundle --outdir=dist-electron --platform=node --external:electron --external:sharp --minify && node -e \"require('fs').cpSync('electron/assets','dist-electron/assets',{recursive:true})\""
+  },
+  "dependencies": {
+    "@codemirror/lang-json": "^6.0.1",
+    "@codemirror/theme-one-dark": "^6.1.2",
+    "@imgly/background-removal": "^1.7.0",
+    "@types/crypto-js": "^4.2.2",
+    "codemirror": "^6.0.1",
+    "cron-parser": "^5.7.0",
+    "crypto-js": "^4.2.0",
+    "diff": "^9.0.0",
+    "fast-xml-parser": "^5.10.1",
+    "foliate-js": "^1.0.1",
+    "js-yaml": "^5.2.3",
+    "jsencrypt": "^3.5.4",
+    "jsqr": "^1.4.0",
+    "onnxruntime-web": "^1.21.0",
+    "pdfjs-dist": "^4.10.38",
+    "pinia": "^2.1.7",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.3",
+    "smol-toml": "^1.7.1",
+    "vue": "^3.4.0",
+    "vue-codemirror": "^6.1.1"
+  },
+  "devDependencies": {
+    "@types/diff": "^7.0.2",
+    "@types/js-yaml": "^4.0.9",
+    "@types/qrcode": "^1.5.6",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.9.1",
+    "esbuild": "^0.19.11",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0",
+    "vue-tsc": "^1.8.27",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.devtools.app",
+    "productName": "兔丝",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist",
+      "dist-electron"
+    ],
+    "extraResources": [
+      {
+        "from": "python-scripts",
+        "to": "python-scripts"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "electron/assets/logo.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "兔丝"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.exe"
+    }
+  }
+}
