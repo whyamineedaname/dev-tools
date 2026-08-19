@@ -1045,7 +1045,7 @@ ipcMain.handle('audio:separate', async (_event, payload: {
     const args = [scriptPath, inputPath, outputDir, mode]
     if (payload.toMp3) args.push('--mp3')
 
-    const proc = spawn('python', args, { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } })
+    const proc = spawn(getPythonCmd(), args, { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } })
     activeSeparateProc = proc
 
     let buffer = ''
@@ -1696,6 +1696,71 @@ async function resolveProcessNames(pids: number[]): Promise<Map<number, string>>
   return map
 }
 
+/** 从 "1.2.3.4:8080" / "[::1]:8080" / "*:8080" 中拆出地址与端口 */
+function splitHostPort(text: string): { address: string; port: number } {
+  const trimmed = text.trim()
+  // IPv6 方括号形式：[::1]:8080
+  const v6 = trimmed.match(/^\[([^\]]+)\]:(\d+)$/)
+  if (v6) return { address: v6[1], port: Number(v6[2]) }
+  const idx = trimmed.lastIndexOf(':')
+  if (idx < 0) return { address: trimmed, port: 0 }
+  return {
+    address: trimmed.slice(0, idx),
+    port: Number(trimmed.slice(idx + 1))
+  }
+}
+
+/** macOS / Linux：用 lsof 列出 TCP 连接（自带进程名，一次解析即可） */
+async function listUnixPorts(port?: number): Promise<PortRow[]> {
+  const result = await runCommand('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN,ESTABLISHED'])
+  if (result.code !== 0 && !result.stdout.trim()) {
+    throw new Error(result.stderr.trim() || 'lsof 执行失败')
+  }
+  const rows: PortRow[] = []
+  const lines = result.stdout.split(/\r?\n/)
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    const parts = trimmed.split(/\s+/)
+    // lsof 列：COMMAND PID USER FD TYPE DEVICE SIZE/OFF PROTO NAME
+    // TYPE 列是 IPv4/IPv6，PROTO 列（第 7 位）才是协议
+    if (parts.length < 9) continue
+    const command = parts[0]
+    const pid = Number(parts[1])
+    const proto = parts[7] || ''
+    if (proto !== 'TCP') continue
+    const name = parts.slice(8).join(' ')
+    // NAME 形如 "*:8080 (LISTEN)" 或 "1.2.3.4:8080->5.6.7.8:80 (ESTABLISHED)"
+    const stateMatch = name.match(/\(([^)]+)\)\s*$/)
+    const state = stateMatch ? stateMatch[1] : ''
+    const cleanName = name.replace(/\s*\([^)]*\)\s*$/, '').trim()
+    const arrow = cleanName.indexOf('->')
+    const localText = (arrow >= 0 ? cleanName.slice(0, arrow) : cleanName).trim()
+    const local = splitHostPort(localText)
+    if (!Number.isFinite(local.port) || local.port <= 0 || local.port > 65535) continue
+    if (typeof port === 'number' && port > 0 && local.port !== port) continue
+    let remoteAddress = ''
+    let remotePort = 0
+    if (arrow >= 0) {
+      const remote = splitHostPort(cleanName.slice(arrow + 2))
+      remoteAddress = remote.address
+      remotePort = remote.port
+    }
+    rows.push({
+      protocol: 'TCP',
+      localAddress: local.address,
+      localPort: local.port,
+      remoteAddress,
+      remotePort,
+      state,
+      pid: Number.isFinite(pid) ? pid : 0,
+      processName: command || ''
+    })
+  }
+  rows.sort((a, b) => a.localPort - b.localPort || a.pid - b.pid)
+  return rows
+}
+
 async function listWindowsPorts(port?: number): Promise<PortRow[]> {
   // 注意：不能用 -p tcp，它只显示 IPv4 TCP；vite 等工具监听在 IPv6（[::1]）时会被漏掉
   const args = ['-ano']
@@ -1748,7 +1813,10 @@ ipcMain.handle('net:listPorts', async (_event, port?: number) => {
       typeof port === 'number' && Number.isFinite(port) && port > 0
         ? Math.floor(port)
         : undefined
-    const data = await listWindowsPorts(target)
+    const data =
+      process.platform === 'win32'
+        ? await listWindowsPorts(target)
+        : await listUnixPorts(target)
     return { success: true as const, data }
   } catch (e: unknown) {
     return { success: false as const, error: e instanceof Error ? e.message : String(e) }
@@ -1763,11 +1831,18 @@ ipcMain.handle('net:killPid', async (_event, pid: number) => {
   if (id === process.pid) {
     return { success: false as const, error: '不能结束当前应用进程' }
   }
-  const result = await runCommand('taskkill', ['/PID', String(id), '/F'])
+  // Windows 用 taskkill，macOS / Linux 用 kill
+  const result =
+    process.platform === 'win32'
+      ? await runCommand('taskkill', ['/PID', String(id), '/F'])
+      : await runCommand('kill', ['-9', String(id)])
   if (result.code === 0) return { success: true as const }
   return {
     success: false as const,
-    error: result.stderr.trim() || result.stdout.trim() || '结束进程失败'
+    error:
+      result.stderr.trim() ||
+      result.stdout.trim() ||
+      (process.platform === 'win32' ? '结束进程失败' : '结束进程失败（可能需要管理员权限）')
   }
 })
 
@@ -2057,9 +2132,16 @@ ipcMain.handle('clipboard:getImageDataUrl', async (_event, id: string) => {
   }
 })
 
+// ==================== Python 脚本 ====================
+
+/** 平台感知的 Python 命令：Windows 用 python，macOS/Linux 用 python3 */
+function getPythonCmd(): string {
+  return process.platform === 'win32' ? 'python' : 'python3'
+}
+
 function runPythonScript(scriptPath: string, args: string[]): Promise<{ success: boolean; output: string; error: string }> {
   return new Promise((resolve) => {
-    const python = spawn('python', [scriptPath, ...args], { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } })
+    const python = spawn(getPythonCmd(), [scriptPath, ...args], { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } })
 
     let stdout = ''
     let stderr = ''

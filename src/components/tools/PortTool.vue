@@ -83,7 +83,7 @@ void query()
   <div class="tool-card">
     <div class="head">
       <h2>端口占用</h2>
-      <p>查看谁占用了端口，并可一键结束进程（Windows）</p>
+      <p>查看谁占用了端口，并可一键结束进程</p>
     </div>
 
     <div class="toolbar">

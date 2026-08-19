@@ -1,6 +1,6 @@
 # 兔丝
 
-Windows 桌面工具箱。把常用的文本处理、文档转换、阅读、取色、去背景等能力收进一个本地应用，双击即可使用。
+跨平台桌面工具箱（Windows / macOS）。把常用的文本处理、文档转换、阅读、取色、去背景等能力收进一个本地应用，双击即可使用。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
@@ -12,12 +12,16 @@ Windows 桌面工具箱。把常用的文本处理、文档转换、阅读、取
 
 从 [GitHub Releases 页面](https://github.com/whyamineedaname/dev-tools/releases) 下载最新版本，任选其一：
 
-| 文件 | 适合谁 |
-|------|--------|
-| `tools-1.0.0-portable.exe` | **推荐**。便携版，拷贝到任意目录双击即可，无需安装 |
-| `tools-Setup-1.0.0.exe` | 安装版，可自定义安装目录，并创建桌面快捷方式 |
+| 系统 | 文件 | 适合谁 |
+|------|------|--------|
+| Windows | `tools-Setup-1.0.0.exe` | 安装版，可自定义安装目录，并创建桌面快捷方式 |
+| Windows | `tools-1.0.0-portable.exe` | **推荐**。便携版，拷贝到任意目录双击即可，无需安装 |
+| macOS | `tools-1.0.0-arm64.dmg` | Apple 芯片（M 系列）Mac |
+| macOS | `tools-1.0.0-x64.dmg` | Intel Mac |
 
-系统要求：Windows 10 / 11（64 位）。
+系统要求：Windows 10 / 11（64 位）、macOS 11.0 及以上。
+
+> macOS 首次打开未签名应用时，请在「访达」中右键应用图标 →「打开」，或前往「系统设置 → 隐私与安全性」点击「仍要打开」。
 
 ### 2. 按需配置环境
 
@@ -25,7 +29,9 @@ Windows 桌面工具箱。把常用的文本处理、文档转换、阅读、取
 
 #### 文档转换（文档转 Markdown / 文档转 PDF）
 
-需要本机安装 **Python 3**，并确保命令行里能执行 `python`。
+需要本机安装 **Python 3**，并确保命令行里能执行 `python`（Windows）或 `python3`（macOS）。
+
+**Windows：**
 
 1. 打开 [Python 官网](https://www.python.org/downloads/) 下载安装包。
 2. 安装时勾选 **Add python.exe to PATH**。
@@ -36,23 +42,36 @@ python --version
 pip install markitdown python-pptx pillow reportlab pywin32
 ```
 
+**macOS：**
+
+```bash
+python3 --version
+pip3 install markitdown python-pptx pillow reportlab
+```
+
 | 包名 | 作用 |
 |------|------|
 | `markitdown` | 各类文档转 Markdown |
 | `python-pptx` | 处理 PPT / PPTX |
 | `pillow` | 图片读写 |
 | `reportlab` | 生成 PDF |
-| `pywin32` | 调用本机 Office / WPS 转换旧版 `.ppt`（可选但建议安装） |
+| `pywin32` | （仅 Windows）调用本机 Office / WPS 转换旧版 `.ppt` |
 
-> `.ppt` 转 PDF 还需要本机已安装 Microsoft Office 或 WPS。
+> `.ppt` 转 PDF 仅 Windows 支持（依赖 Microsoft Office / WPS COM）；macOS 上请先用 Office / Keynote 另存为 `.pptx` 再转换。
 
-#### 视频转动图（MP4 转 WebP）
+#### 视频转动图（MP4 转 WebP） / 音视频转码 / B 站下载合并
 
 需要本机安装 **FFmpeg**，并加入 PATH。
 
-1. 下载 [FFmpeg](https://ffmpeg.org/download.html)（Windows builds）。
-2. 解压后，把 `bin` 目录加入系统环境变量 PATH。
-3. 验证：
+**Windows：** 下载 [FFmpeg](https://ffmpeg.org/download.html)（Windows builds），解压后把 `bin` 目录加入系统环境变量 PATH。
+
+**macOS：**
+
+```bash
+brew install ffmpeg
+```
+
+验证：
 
 ```bash
 ffmpeg -version
@@ -60,26 +79,30 @@ ffmpeg -version
 
 #### 人声分离
 
-需要本机安装 **Python 3**，并执行：
+需要本机安装 **Python 3**，并执行（macOS 用 `pip3`）：
 
 ```bash
-pip install demucs
+pip install demucs        # Windows
+pip3 install demucs       # macOS
 ```
 
 `demucs` 会附带安装 PyTorch（体积较大）。首次分离时应用会自动下载 AI 模型（约 300MB），请保持网络畅通。CPU 下分离一首 4 分钟歌曲约需 3-8 分钟，属于正常速度。
 
 #### 不需要额外环境的工具
 
-JSON 格式化、加解密、文档阅读器、取色器、图片去背景、EXIF 查看、图片拼图 —— 装好应用即可用。
+JSON 格式化、加解密、文档阅读器、取色器、图片去背景、EXIF 查看、图片拼图、端口占用 —— 装好应用即可用。
 
 > 「图片去背景」首次运行可能下载 AI 模型，请保持网络畅通。
 
 ### 3. 启动
 
-- 便携版：双击 `兔丝-x.x.x-portable.exe`
-- 安装版：从桌面快捷方式或开始菜单打开「兔丝」
+- Windows 便携版：双击 `兔丝-x.x.x-portable.exe`
+- Windows 安装版：从桌面快捷方式或开始菜单打开「兔丝」
+- macOS：打开 `兔丝.app`（拖动到「应用程序」文件夹更方便）
 
 左侧是分类菜单，点击分类后选择具体工具。
+
+> macOS 使用「取色器」时，首次会提示需要「屏幕录制」权限，请在「系统设置 → 隐私与安全性 → 屏幕录制」中开启。
 
 ---
 
@@ -196,7 +219,7 @@ JSON / YAML / TOML / XML 互相转换。
 把 PPT / 图片等转成 PDF。
 
 - 支持：`.ppt`、`.pptx`、`.jpg`、`.jpeg`、`.png`
-- `.ppt` 走本机 Office / WPS；图片与 PPTX 走 Python 脚本生成 PDF
+- `.ppt` 走本机 Office / WPS（仅 Windows）；图片与 PPTX 走 Python 脚本生成 PDF
 
 **适合：** 汇报材料统一成 PDF、截图/幻灯片归档。
 
@@ -386,12 +409,12 @@ JSON / YAML / TOML / XML 互相转换。
 | EXIF 查看 | 无 |
 | 图片拼图 | 无 |
 | 文档转 Markdown | Python 3 + `pip install markitdown ...` |
-| 文档转 PDF | Python 3 + 上述 pip 包；`.ppt` 另需 Office / WPS |
+| 文档转 PDF | Python 3 + 上述 pip 包；`.ppt` 转 PDF 仅 Windows 支持（需 Office / WPS） |
 | MP4 转 WebP | FFmpeg 并加入 PATH |
 | 音视频转码 | FFmpeg 并加入 PATH |
 | 人声分离 | Python 3 + `pip install demucs`；首次联网下载模型 |
 | HTTP 客户端 | 无 |
-| 端口占用 | 无（Windows 使用 netstat / taskkill） |
+| 端口占用 | 无（Windows 使用 netstat / taskkill，macOS / Linux 使用 lsof / kill） |
 | DNS 查询 | 无 |
 
 ---
@@ -401,8 +424,14 @@ JSON / YAML / TOML / XML 互相转换。
 **Q：双击便携版没反应，或杀毒软件拦截？**  
 A：部分安全软件会误报未签名的 exe。可添加信任，或改用安装版。
 
+**Q：macOS 打开提示「无法验证开发者」？**  
+A：应用未签名，请在「访达」中右键应用 →「打开」，或到「系统设置 → 隐私与安全性」点击「仍要打开」。
+
+**Q：macOS 取色器截图全黑？**  
+A：需要在「系统设置 → 隐私与安全性 → 屏幕录制」中为「兔丝」开启权限，然后重启应用。
+
 **Q：文档转换提示找不到 `python`？**  
-A：安装 Python 时勾选加入 PATH，重开命令行执行 `python --version`。仍不行可重启电脑后再试。
+A：Windows 安装 Python 时勾选加入 PATH，重开命令行执行 `python --version`；macOS 执行 `python3 --version`。仍不行可重启电脑后再试。
 
 **Q：MP4 转 WebP 失败？**  
 A：确认 `ffmpeg -version` 可用。未配置 PATH 时应用找不到 FFmpeg。

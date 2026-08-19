@@ -346,8 +346,8 @@ function createOverlayWindow(display: Display, payload: OverlayPayload, preloadP
 }
 
 /**
- * 系统级取色：最小化主窗口 → 截取各显示器 → 全屏覆盖层点击取色。
- * 覆盖层基于真实桌面截图，可取任意 Windows 窗口上的颜色。
+ * 系统级取色：隐藏主窗口 → 截取各显示器 → 全屏覆盖层点击取色。
+ * 覆盖层基于真实桌面截图，可取任意窗口上的颜色。
  */
 export async function startSystemColorPick(mainWindow: BrowserWindow | null): Promise<ColorPickResult> {
   if (picking) {
@@ -356,19 +356,39 @@ export async function startSystemColorPick(mainWindow: BrowserWindow | null): Pr
 
   picking = true
 
+  const isMac = process.platform === 'darwin'
   const wasMinimized = mainWindow?.isMinimized() ?? false
   const wasVisible = mainWindow?.isVisible() ?? false
+  const wasHidden = mainWindow?.isVisible() === false && !mainWindow.isDestroyed()
 
   try {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.minimize()
-      // 等最小化动画完成，避免截到本应用窗口
+      if (isMac) {
+        // macOS 上 minimize 会播放收起动画且窗口仍占用 Dock，改用 hide()
+        mainWindow.hide()
+      } else {
+        mainWindow.minimize()
+      }
+      // 等窗口隐藏动画完成，避免截到本应用窗口
       await new Promise((r) => setTimeout(r, 200))
     }
 
     const displays = screen.getAllDisplays()
     const preloadPath = join(__dirname, 'colorPickerPreload.js')
-    const payloads = await captureAllDisplays(displays)
+    let payloads: OverlayPayload[]
+    try {
+      payloads = await captureAllDisplays(displays)
+    } catch (err: unknown) {
+      // macOS 未授予「屏幕录制」权限时截图会失败/全黑，给出明确指引
+      if (isMac) {
+        const message = err instanceof Error ? err.message : String(err)
+        return {
+          success: false,
+          error: `${message}。请在「系统设置 → 隐私与安全性 → 屏幕录制」中为「兔丝」开启权限后重试`
+        }
+      }
+      throw err
+    }
 
     const result = await new Promise<ColorPickResult>((resolve) => {
       resolvePick = resolve
@@ -403,7 +423,11 @@ export async function startSystemColorPick(mainWindow: BrowserWindow | null): Pr
     return { success: false, error: message }
   } finally {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      if (!wasMinimized && wasVisible) {
+      if (isMac) {
+        // macOS：恢复 show 即可（hide 之前的状态）
+        mainWindow.show()
+        mainWindow.focus()
+      } else if (!wasMinimized && wasVisible) {
         mainWindow.restore()
         mainWindow.show()
         mainWindow.focus()

@@ -176,7 +176,7 @@ const rgbParts = computed(() => {
             {{ picking ? '取色中… 点击目标或 Esc 取消' : '吸管取色' }}
           </button>
           <p v-if="!canSystemPick" class="hint warn">系统取色仅在桌面应用内可用</p>
-          <p v-else class="hint">启动后会暂时最小化本窗口，可在任意 Windows 窗口上点击取色</p>
+          <p v-else class="hint">启动后会暂时隐藏本窗口，可在任意应用窗口上点击取色</p>
         </div>
       </div>
 

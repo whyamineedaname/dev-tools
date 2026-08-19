@@ -1,7 +1,8 @@
 {
   "name": "dev-tools",
   "version": "1.0.0",
-  "description": "兔丝 - Windows 桌面应用",
+  "description": "兔丝 - 跨平台桌面工具箱",
+  "author": "whyamineedaname",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k -n VITE,MAIN,ELECTRON -c blue,green,yellow \"vite\" \"npm run dev:electron\" \"wait-on tcp:33445 && cross-env NODE_ENV=development electron .\"",
@@ -72,6 +73,27 @@
       "icon": "electron/assets/logo.ico",
       "artifactName": "tools-${version}-${arch}.${ext}"
     },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.utilities",
+      "icon": "electron/assets/logo.png",
+      "artifactName": "tools-${version}-${arch}.${ext}",
+      "identity": null
+    },
+    "dmg": {
+      "artifactName": "tools-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "electron/assets/logo.png",
+      "category": "Utility",
+      "artifactName": "tools-${version}-${arch}.${ext}"
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
@@ -82,5 +104,12 @@
     "portable": {
       "artifactName": "tools-${version}-portable.${ext}"
     }
+  },
+  "allowScripts": {
+    "electron@28.3.3": true,
+    "esbuild@0.19.12": true,
+    "esbuild@0.21.5": true,
+    "fsevents@2.3.3": true,
+    "protobufjs@7.6.5": true
   }
 }
