@@ -10,6 +10,10 @@ declare global {
           filters?: { name: string; extensions: string[] }[]
         }) => Promise<string | null>
         openDirectory: (title?: string) => Promise<string | null>
+        openFiles: (options?: {
+          title?: string
+          filters?: { name: string; extensions: string[] }[]
+        }) => Promise<string[] | null>
         saveFile: (options?: {
           title?: string
           defaultPath?: string
@@ -132,6 +136,49 @@ declare global {
           success: boolean
           output: string
           error: string
+        }>
+      }
+      ocr: {
+        captureRegion: () => Promise<
+          | {
+              success: true
+              dataUrl: string
+              width: number
+              height: number
+            }
+          | {
+              success: false
+              cancelled?: boolean
+              error?: string
+            }
+        >
+        fromDataUrl: (subcommand: 'image' | 'qrcode', dataUrl: string) => Promise<{
+          success: boolean
+          text?: string
+          codes?: Array<{ type: string; data: string }>
+          error?: string
+        }>
+        image: (imagePath: string) => Promise<{
+          success: boolean
+          text?: string
+          error?: string
+        }>
+        batch: (paths: string[]) => Promise<{
+          success: boolean
+          items?: Array<{ path: string; text: string; error: string }>
+          error?: string
+        }>
+        pdf: (pdfPath: string) => Promise<{
+          success: boolean
+          pages?: Array<{ page: number; text: string }>
+          text?: string
+          error?: string
+        }>
+        qrcode: (imagePath: string) => Promise<{
+          success: boolean
+          codes?: Array<{ type: string; data: string }>
+          text?: string
+          error?: string
         }>
       }
       color: {
@@ -277,6 +324,37 @@ declare global {
               }
             }
           | { success: false; error: string }
+        >
+      }
+      datasync: {
+        /** 查询源/目标表字段信息 */
+        fields: (cfg: unknown) => Promise<
+          | {
+              ok: true
+              source: {
+                engine: string
+                fields: Array<{
+                  name: string
+                  type: string
+                  nullable: boolean
+                  primaryKey: boolean
+                }>
+              }
+              target: null
+            }
+          | { ok: false; error: string }
+        >
+        /** 执行数据同步（批量 upsert） */
+        sync: (cfg: unknown) => Promise<
+          | {
+              ok: true
+              total: number
+              inserted: number
+              updated: number
+              errors: string[]
+              seconds: number
+            }
+          | { ok: false; error: string }
         >
       }
       bili: {

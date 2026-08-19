@@ -18,6 +18,7 @@ import DocReaderTool from '@/components/tools/DocReaderTool.vue'
 import Mp4ToWebpTool from '@/components/tools/Mp4ToWebpTool.vue'
 import MediaTranscodeTool from '@/components/tools/MediaTranscodeTool.vue'
 import VoiceSeparateTool from '@/components/tools/VoiceSeparateTool.vue'
+import OcrTool from '@/components/tools/OcrTool.vue'
 import ColorPickerTool from '@/components/tools/ColorPickerTool.vue'
 import RemoveBgTool from '@/components/tools/RemoveBgTool.vue'
 import QrTool from '@/components/tools/QrTool.vue'
@@ -27,9 +28,11 @@ import PuzzleTool from '@/components/tools/PuzzleTool.vue'
 import HttpClientTool from '@/components/tools/HttpClientTool.vue'
 import PortTool from '@/components/tools/PortTool.vue'
 import DnsTool from '@/components/tools/DnsTool.vue'
+import DataSyncTool from '@/components/tools/DataSyncTool.vue'
 import BiliDownloaderTool from '@/components/tools/BiliDownloaderTool.vue'
 import ThemeTool from '@/components/tools/ThemeTool.vue'
 import MenuTool from '@/components/tools/MenuTool.vue'
+import LoanCalcTool from '@/components/tools/LoanCalcTool.vue'
 import type { Component } from 'vue'
 
 const tabsStore = useTabsStore()
@@ -54,6 +57,7 @@ const toolComponents: Record<string, Component> = {
   Mp4ToWebpTool,
   MediaTranscodeTool,
   VoiceSeparateTool,
+  OcrTool,
   ColorPickerTool,
   RemoveBgTool,
   QrTool,
@@ -63,9 +67,11 @@ const toolComponents: Record<string, Component> = {
   HttpClientTool,
   PortTool,
   DnsTool,
+  DataSyncTool,
   BiliDownloaderTool,
   ThemeTool,
-  MenuTool
+  MenuTool,
+  LoanCalcTool
 }
 </script>
 

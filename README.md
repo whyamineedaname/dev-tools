@@ -46,6 +46,23 @@ pip install markitdown python-pptx pillow reportlab pywin32
 
 > `.ppt` 转 PDF 还需要本机已安装 Microsoft Office 或 WPS。
 
+#### OCR 文字识别
+
+需要本机安装 **Python 3**，并执行：
+
+```bash
+pip install rapidocr onnxruntime opencv-python pymupdf
+```
+
+| 包名 | 作用 |
+|------|------|
+| `rapidocr` | 文字识别引擎（离线本地推理，模型内置） |
+| `onnxruntime` | RapidOCR 的推理后端 |
+| `opencv-python` | 二维码 / 条形码识别 |
+| `pymupdf` | 扫描版 PDF 逐页转图片 |
+
+> 首次运行 RapidOCR 会加载模型（包内自带、不额外下载），CPU 下单张图片通常 1 秒内出结果。
+
 #### 视频转动图（MP4 转 WebP）
 
 需要本机安装 **FFmpeg**，并加入 PATH。
@@ -199,6 +216,23 @@ JSON / YAML / TOML / XML 互相转换。
 - `.ppt` 走本机 Office / WPS；图片与 PPTX 走 Python 脚本生成 PDF
 
 **适合：** 汇报材料统一成 PDF、截图/幻灯片归档。
+
+#### OCR 文字识别
+
+基于 RapidOCR 的本地离线文字识别，四种模式：
+
+| 模式 | 说明 |
+|------|------|
+| 截图识别 | 全屏划选区域，识别其中的文字 |
+| 批量识别 | 一次选择多张图片，逐个提取文字 |
+| PDF 识别 | 扫描版 PDF 逐页识别，保留页码分段 |
+| 二维码 | 识别图片 / 截图中的二维码与条形码 |
+
+- 完全本地运行，图片不上传
+- 结果一键复制
+- 依赖本机 Python 3 + `pip install rapidocr onnxruntime opencv-python pymupdf`
+
+**适合：** 从截图、扫描件、宣传图中提取文字和链接。
 
 #### 文档阅读器
 
@@ -387,6 +421,7 @@ JSON / YAML / TOML / XML 互相转换。
 | 图片拼图 | 无 |
 | 文档转 Markdown | Python 3 + `pip install markitdown ...` |
 | 文档转 PDF | Python 3 + 上述 pip 包；`.ppt` 另需 Office / WPS |
+| OCR 文字识别 | Python 3 + `pip install rapidocr onnxruntime opencv-python pymupdf` |
 | MP4 转 WebP | FFmpeg 并加入 PATH |
 | 音视频转码 | FFmpeg 并加入 PATH |
 | 人声分离 | Python 3 + `pip install demucs`；首次联网下载模型 |

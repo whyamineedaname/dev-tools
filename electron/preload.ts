@@ -7,6 +7,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('dialog:openFile', options),
     openDirectory: (title?: string) =>
       ipcRenderer.invoke('dialog:openDirectory', title),
+    openFiles: (options?: {
+      title?: string
+      filters?: { name: string; extensions: string[] }[]
+    }) => ipcRenderer.invoke('dialog:openFiles', options),
     saveFile: (options?: {
       title?: string
       defaultPath?: string
@@ -53,6 +57,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('python:fileToMd', inputPath, outputPath),
     docToPdf: (inputPath: string, outputPath: string) =>
       ipcRenderer.invoke('python:docToPdf', inputPath, outputPath)
+  },
+  ocr: {
+    captureRegion: () => ipcRenderer.invoke('ocr:captureRegion'),
+    fromDataUrl: (subcommand: 'image' | 'qrcode', dataUrl: string) =>
+      ipcRenderer.invoke('ocr:fromDataUrl', subcommand, dataUrl),
+    image: (imagePath: string) =>
+      ipcRenderer.invoke('python:ocrImage', imagePath),
+    batch: (paths: string[]) =>
+      ipcRenderer.invoke('python:ocrBatch', paths),
+    pdf: (pdfPath: string) =>
+      ipcRenderer.invoke('python:ocrPdf', pdfPath),
+    qrcode: (imagePath: string) =>
+      ipcRenderer.invoke('python:ocrQrcode', imagePath)
   },
   color: {
     pick: () => ipcRenderer.invoke('color:pick')
@@ -120,6 +137,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
         return { success: false, error: `DNS 调用失败：${name}${msg}` }
       }
     }
+  },
+  datasync: {
+    fields: (cfg: unknown) => ipcRenderer.invoke('datasync:fields', cfg),
+    sync: (cfg: unknown) => ipcRenderer.invoke('datasync:sync', cfg)
   },
   bili: {
     info: (input: string, cookie?: string) =>

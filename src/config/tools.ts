@@ -24,6 +24,7 @@ import iconDocReader from '@/assets/icons/菲谢尔.png' // 用于：文档阅�
 import iconMp4ToWebp from '@/assets/icons/八重神子.png' // 用于：MP4 转 WebP
 import iconMediaTranscode from '@/assets/icons/莹.png' // 用于：音视频转码
 import iconVoiceSeparate from '@/assets/icons/芭芭拉.png' // 用于：人声分离
+import iconOcr from '@/assets/icons/香菱.png' // 用于：OCR 文字识别
 
 // 颜色图片分类
 import iconColorPicker from '@/assets/icons/1魂-compressed.png' // 用于：取色器
@@ -38,10 +39,14 @@ import iconHttpClient from '@/assets/icons/雷.png' // 用于：HTTP 客户端
 import iconPort from '@/assets/icons/水.png' // 用于：端口占用
 import iconDns from '@/assets/icons/风.png' // 用于：DNS 查询
 import iconBiliDownloader from '@/assets/icons/火.png' // 用于：视频下载器
+import iconDataSync from '@/assets/icons/岩.png' // 用于：数据同步
 
 // 应用管理分类
 import iconTheme from '@/assets/icons/144839450_p3_master1200-compressed.jpg' // 用于：主题管理
 import iconMenu from '@/assets/icons/144839450_p2_master1200-compressed.jpg' // 用于：菜单管理
+
+// 计算工具分类
+import iconLoanCalc from '@/assets/icons/摩拉.png' // 用于：房贷计算器
 
 // ============================================================
 // 侧边栏分类图标 + 应用 Logo
@@ -51,6 +56,7 @@ import iconCatColor from '@/assets/icons/element-06.png' // 用于：分类「�
 import iconCatNetwork from '@/assets/icons/element-03.png' // 用于：分类「网络调试」
 import iconCatData from '@/assets/icons/element-02.png' // 用于：分类「数据文件」
 import iconCatApp from '@/assets/icons/element-08.png' // 用于：分类「应用管理」
+import iconCatCalc from '@/assets/icons/element-04.png' // 用于：分类「计算工具」
 import iconLogo from '@/assets/icons/147629742_p0_master1200-compressed.jpg' // 用于：应用 Logo（侧边栏标题）
 
 export const tools: Tool[] = [
@@ -153,6 +159,13 @@ export const tools: Tool[] = [
     component: 'VoiceSeparateTool'
   },
   {
+    id: 'ocr',
+    name: 'OCR 文字识别',
+    icon: iconOcr,
+    category: 'data',
+    component: 'OcrTool'
+  },
+  {
     id: 'colorPicker',
     name: '取色器',
     icon: iconColorPicker,
@@ -216,11 +229,25 @@ export const tools: Tool[] = [
     component: 'DnsTool'
   },
   {
+    id: 'dataSync',
+    name: '数据同步',
+    icon: iconDataSync,
+    category: 'network',
+    component: 'DataSyncTool'
+  },
+  {
     id: 'biliDownloader',
     name: '视频下载器',
     icon: iconBiliDownloader,
     category: 'network',
     component: 'BiliDownloaderTool'
+  },
+  {
+    id: 'loanCalc',
+    name: '房贷计算器',
+    icon: iconLoanCalc,
+    category: 'calc',
+    component: 'LoanCalcTool'
   },
   {
     id: 'theme',
@@ -244,6 +271,7 @@ export const categories = [
   { id: 'color', name: '颜色图片', icon: iconCatColor },
   { id: 'network', name: '网络调试', icon: iconCatNetwork },
   { id: 'data', name: '数据文件', icon: iconCatData },
+  { id: 'calc', name: '计算工具', icon: iconCatCalc },
   { id: 'app', name: '应用管理', icon: iconCatApp }
 ]
 

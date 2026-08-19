@@ -5,10 +5,10 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k -n VITE,MAIN,ELECTRON -c blue,green,yellow \"vite\" \"npm run dev:electron\" \"wait-on tcp:33445 && cross-env NODE_ENV=development electron .\"",
-    "dev:electron": "node -e \"require('fs').cpSync('electron/assets','dist-electron/assets',{recursive:true})\" && esbuild electron/main.ts electron/preload.ts electron/colorPickerPreload.ts --bundle --outdir=dist-electron --platform=node --external:electron --external:sharp --watch",
+    "dev:electron": "node -e \"require('fs').cpSync('electron/assets','dist-electron/assets',{recursive:true})\" && esbuild electron/main.ts electron/preload.ts electron/colorPickerPreload.ts electron/ocrCapturePreload.ts --bundle --outdir=dist-electron --platform=node --external:electron --external:sharp --watch",
     "typecheck": "vue-tsc --noEmit",
     "build": "vite build && npm run build:electron && electron-builder",
-    "build:electron": "esbuild electron/main.ts electron/preload.ts electron/colorPickerPreload.ts --bundle --outdir=dist-electron --platform=node --external:electron --external:sharp --minify && node -e \"require('fs').cpSync('electron/assets','dist-electron/assets',{recursive:true})\""
+    "build:electron": "esbuild electron/main.ts electron/preload.ts electron/colorPickerPreload.ts electron/ocrCapturePreload.ts --bundle --outdir=dist-electron --platform=node --external:electron --external:sharp --minify && node -e \"require('fs').cpSync('electron/assets','dist-electron/assets',{recursive:true})\""
   },
   "dependencies": {
     "@codemirror/lang-json": "^6.0.1",
@@ -23,6 +23,8 @@
     "foliate-js": "^1.0.1",
     "js-yaml": "^5.2.3",
     "jsencrypt": "^3.5.4",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "jsqr": "^1.4.0",
     "onnxruntime-web": "^1.21.0",
     "pdfjs-dist": "^4.10.38",
@@ -43,7 +45,7 @@
     "electron": "^28.3.3",
     "electron-builder": "^24.9.1",
     "esbuild": "^0.19.11",
-    "typescript": "^5.3.0",
+    "typescript": "^5.4.5",
     "vite": "^5.0.0",
     "vue-tsc": "^1.8.27",
     "wait-on": "^7.2.0"
