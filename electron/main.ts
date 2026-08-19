@@ -8,6 +8,7 @@ import { createHash, generateKeyPairSync } from 'crypto'
 import { promises as dns } from 'dns'
 import sharp from 'sharp'
 import { startSystemColorPick } from './colorPicker'
+import { startOcrCapture } from './ocrCapture'
 
 function getReaderProgressDir(): string {
   return join(app.getPath('userData'), 'reader', 'progress')
@@ -412,6 +413,21 @@ ipcMain.handle('dialog:openFile', async (_event, options: {
   return result.filePaths[0]
 })
 
+// 选择文件（多选，OCR 批量识别等）
+ipcMain.handle('dialog:openFiles', async (_event, options: {
+  title?: string
+  filters?: { name: string; extensions: string[] }[]
+} = {}) => {
+  if (!mainWindow) return null
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: options.title || '选择文件',
+    filters: options.filters,
+    properties: ['openFile', 'multiSelections']
+  })
+  if (result.canceled || result.filePaths.length === 0) return null
+  return result.filePaths
+})
+
 // 选择目录
 ipcMain.handle('dialog:openDirectory', async (_event, title?: string) => {
   if (!mainWindow) return null
@@ -467,6 +483,107 @@ ipcMain.handle('python:docToPdf', async (_event, inputPath: string, outputPath: 
     join(getScriptsDir(), 'doctopdf_single.py'),
     [inputPath, outputPath]
   )
+})
+
+// ============ OCR 工具（python-scripts/ocr.py，统一 JSON 输出） ============
+
+/** 运行 ocr.py 并把 stdout JSON 解析为结构化结果 */
+async function runOcrScript(args: string[]): Promise<Record<string, unknown> & { success: boolean }> {
+  const result = await runPythonScript(join(getScriptsDir(), 'ocr.py'), args)
+  if (!result.success) {
+    return { success: false, error: result.error || 'OCR 脚本执行失败' }
+  }
+  try {
+    const parsed = JSON.parse(result.output) as Record<string, unknown>
+    return parsed as Record<string, unknown> & { success: boolean }
+  } catch {
+    return { success: false, error: `OCR 脚本输出无法解析：${result.output}` }
+  }
+}
+
+// 识别单张图片：python:ocrImage(imagePath)
+ipcMain.handle('python:ocrImage', async (_event, imagePath: string) => {
+  return runOcrScript(['image', imagePath])
+})
+
+// 批量识别多张图片：python:ocrBatch(paths[])
+ipcMain.handle('python:ocrBatch', async (_event, paths: string[]) => {
+  const valid = Array.isArray(paths) ? paths.filter((p): p is string => typeof p === 'string') : []
+  if (valid.length === 0) return { success: false, error: '未选择任何图片' }
+  return runOcrScript(['batch', ...valid])
+})
+
+// 扫描版 PDF 逐页识别：python:ocrPdf(pdfPath)
+ipcMain.handle('python:ocrPdf', async (_event, pdfPath: string) => {
+  return runOcrScript(['pdf', pdfPath])
+})
+
+// 识别二维码：python:ocrQrcode(imagePath)
+ipcMain.handle('python:ocrQrcode', async (_event, imagePath: string) => {
+  return runOcrScript(['qrcode', imagePath])
+})
+
+// 截图选区：ocr:captureRegion → { success, dataUrl, width, height }
+ipcMain.handle('ocr:captureRegion', async () => {
+  return startOcrCapture(mainWindow)
+})
+
+// 对 base64 图片执行 OCR（截图选区等返回的是 dataUrl，需先落临时文件）
+// subcommand: 'image' | 'qrcode'
+ipcMain.handle('ocr:fromDataUrl', async (_event, subcommand: string, dataUrl: string) => {
+  if (subcommand !== 'image' && subcommand !== 'qrcode') {
+    return { success: false, error: `不支持的 OCR 子命令：${subcommand}` }
+  }
+  const match = /^data:image\/(png|jpe?g|webp|bmp);base64,(.+)$/i.exec(dataUrl ?? '')
+  if (!match) return { success: false, error: '图片数据格式无效' }
+
+  const ext = match[1].toLowerCase().replace('jpeg', 'jpg')
+  const tmpPath = join(app.getPath('temp'), `tusi-ocr-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`)
+  try {
+    await writeFile(tmpPath, Buffer.from(match[2], 'base64'))
+    return await runOcrScript([subcommand, tmpPath])
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { success: false, error: message }
+  } finally {
+    await unlink(tmpPath).catch(() => {})
+  }
+})
+
+// ============ 数据同步（python-scripts/datasync.py，统一 JSON 输出） ============
+
+/** 运行 datasync.py 并把 stdout JSON 解析为结构化结果 */
+async function runDatasyncScript(args: string[]): Promise<Record<string, unknown> & { ok: boolean }> {
+  const result = await runPythonScript(join(getScriptsDir(), 'datasync.py'), args)
+  if (!result.success) {
+    return { ok: false, error: result.error || '数据同步脚本执行失败' }
+  }
+  try {
+    const parsed = JSON.parse(result.output) as Record<string, unknown>
+    return parsed as Record<string, unknown> & { ok: boolean }
+  } catch {
+    return { ok: false, error: `数据同步脚本输出无法解析：${result.output}` }
+  }
+}
+
+// 查询表字段信息：datasync:fields(cfg) → { ok, source: { fields: [...] } }
+ipcMain.handle('datasync:fields', async (_event, cfg: unknown) => {
+  try {
+    return await runDatasyncScript(['fields', JSON.stringify(cfg ?? {})])
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { ok: false, error: message }
+  }
+})
+
+// 执行数据同步：datasync:sync(cfg) → { ok, total, inserted, updated, errors }
+ipcMain.handle('datasync:sync', async (_event, cfg: unknown) => {
+  try {
+    return await runDatasyncScript(['sync', JSON.stringify(cfg ?? {})])
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { ok: false, error: message }
+  }
 })
 
 // 系统级取色（截屏覆盖层，可取任意 Windows 窗口颜色）

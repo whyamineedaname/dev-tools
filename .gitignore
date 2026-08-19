@@ -39,3 +39,5 @@ main.js
 *.pyc
 __pycache__/
 .playwright-mcp/
+/AGENTS.md
+/启动工具箱.bat

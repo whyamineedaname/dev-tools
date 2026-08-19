@@ -32,6 +32,7 @@ const shortNames: Record<string, string> = {
   mp4ToWebp: '转WebP',
   mediaTranscode: '转码',
   voiceSeparate: '人声',
+  ocr: 'OCR',
   colorPicker: '取色器',
   removeBg: '去背景',
   qrcode: '二维码',
@@ -41,7 +42,9 @@ const shortNames: Record<string, string> = {
   httpClient: 'HTTP',
   portTool: '端口',
   dnsTool: 'DNS',
+  dataSync: '同步',
   biliDownloader: '下载',
+  loanCalc: '房贷',
   theme: '主题',
   menu: '菜单'
 }
