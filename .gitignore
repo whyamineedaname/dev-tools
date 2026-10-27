@@ -41,3 +41,13 @@ __pycache__/
 .playwright-mcp/
 /AGENTS.md
 /启动工具箱.bat
+/启动工具箱.sh
+/启动工具箱.command
+# Local CosyVoice checkout + venv (large; do not commit)
+/CosyVoice/
+
+# 单位换算测试的临时产物
+.tmp-test/
+
+# 本地调试产物（抓包、渲染截图、模型试验）
+/artifacts/
