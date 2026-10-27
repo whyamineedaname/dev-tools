@@ -16,6 +16,7 @@ import iconDiff from '@/assets/icons/dinosaur.png' // 用于：文本对比
 import iconFormatConvert from '@/assets/icons/cupcake.png' // 用于：配置格式互转
 import iconCron from '@/assets/icons/unicorn.png' // 用于：Cron 解析
 import iconClipboard from '@/assets/icons/lion.png' // 用于：剪贴板历史
+import iconTranslate from '@/assets/icons/78a2.ico' // 用于：本地翻译
 
 // 数据文件分类
 import iconFileToMd from '@/assets/icons/肖宫.png' // 用于：文档转 Markdown
@@ -25,6 +26,7 @@ import iconMp4ToWebp from '@/assets/icons/八重神子.png' // 用于：MP4 转 
 import iconMediaTranscode from '@/assets/icons/莹.png' // 用于：音视频转码
 import iconVoiceSeparate from '@/assets/icons/芭芭拉.png' // 用于：人声分离
 import iconOcr from '@/assets/icons/香菱.png' // 用于：OCR 文字识别
+import iconTts from '@/assets/icons/影.png' // 用于：语音合成
 
 // 颜色图片分类
 import iconColorPicker from '@/assets/icons/1魂-compressed.png' // 用于：取色器
@@ -40,13 +42,16 @@ import iconPort from '@/assets/icons/水.png' // 用于：端口占用
 import iconDns from '@/assets/icons/风.png' // 用于：DNS 查询
 import iconBiliDownloader from '@/assets/icons/火.png' // 用于：视频下载器
 import iconDataSync from '@/assets/icons/岩.png' // 用于：数据同步
+import iconMusicDownload from '@/assets/icons/冰.png' // 用于：音乐下载
 
 // 应用管理分类
 import iconTheme from '@/assets/icons/144839450_p3_master1200-compressed.jpg' // 用于：主题管理
 import iconMenu from '@/assets/icons/144839450_p2_master1200-compressed.jpg' // 用于：菜单管理
+import iconFileDir from '@/assets/icons/element-05.png' // 用于：文件目录
 
 // 计算工具分类
 import iconLoanCalc from '@/assets/icons/摩拉.png' // 用于：房贷计算器
+import iconUnitConvert from '@/assets/icons/鲸鱼娘2.ico' // 用于：单位换算
 
 // ============================================================
 // 侧边栏分类图标 + 应用 Logo
@@ -117,6 +122,13 @@ export const tools: Tool[] = [
     component: 'ClipboardHistoryTool'
   },
   {
+    id: 'translate',
+    name: '本地翻译',
+    icon: iconTranslate,
+    category: 'text',
+    component: 'TranslateTool'
+  },
+  {
     id: 'fileToMd',
     name: '文档转 Markdown',
     icon: iconFileToMd,
@@ -164,6 +176,13 @@ export const tools: Tool[] = [
     icon: iconOcr,
     category: 'data',
     component: 'OcrTool'
+  },
+  {
+    id: 'tts',
+    name: '语音合成',
+    icon: iconTts,
+    category: 'data',
+    component: 'TtsTool'
   },
   {
     id: 'colorPicker',
@@ -243,11 +262,25 @@ export const tools: Tool[] = [
     component: 'BiliDownloaderTool'
   },
   {
+    id: 'musicDownload',
+    name: '音乐下载',
+    icon: iconMusicDownload,
+    category: 'network',
+    component: 'MusicDownloadTool'
+  },
+  {
     id: 'loanCalc',
     name: '房贷计算器',
     icon: iconLoanCalc,
     category: 'calc',
     component: 'LoanCalcTool'
+  },
+  {
+    id: 'unitConvert',
+    name: '单位换算',
+    icon: iconUnitConvert,
+    category: 'calc',
+    component: 'UnitConvertTool'
   },
   {
     id: 'theme',
@@ -262,6 +295,13 @@ export const tools: Tool[] = [
     icon: iconMenu,
     category: 'app',
     component: 'MenuTool'
+  },
+  {
+    id: 'fileDir',
+    name: '文件目录',
+    icon: iconFileDir,
+    category: 'app',
+    component: 'FileDirTool'
   }
 ]
 

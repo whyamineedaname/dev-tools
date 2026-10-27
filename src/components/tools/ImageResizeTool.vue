@@ -272,11 +272,13 @@ async function saveOne(item: ImageItem) {
 async function saveAll() {
   const dir = await window.electronAPI.dialog.openDirectory('选择输出目录')
   if (!dir) return
+  const sep = window.electronAPI.platform === 'win32' ? '\\' : '/'
+  const outDir = dir.replace(/[\\/]+$/, '')
   let ok = 0
   for (const item of items.value) {
     if (!item.outUrl) continue
     const base = item.name.replace(/\.[^.]+$/, '')
-    const path = `${dir}\\${base}-compressed.${extForItem(item)}`
+    const path = `${outDir}${sep}${base}-compressed.${extForItem(item)}`
     const base64 = item.outUrl.replace(/^data:[^;]+;base64,/, '')
     const result = await window.electronAPI.file.writeBase64(path, base64)
     if (result.success) ok++

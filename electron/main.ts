@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog, clipboard, nativeImage, protocol, net, shell } from 'electron'
-import { join, extname } from 'path'
+import { join, extname, isAbsolute } from 'path'
 import { pathToFileURL } from 'url'
 import { spawn } from 'child_process'
 import { readFile, writeFile, mkdir, readdir, access, unlink, rm, open, stat, rename } from 'fs/promises'
@@ -9,6 +9,10 @@ import { promises as dns } from 'dns'
 import sharp from 'sharp'
 import { startSystemColorPick } from './colorPicker'
 import { startOcrCapture } from './ocrCapture'
+import { registerTtsIpc } from './tts'
+import { registerTranslateIpc } from './translate'
+import { getAppTempDir, getDialogDefaultDir, registerAppPathsIpc } from './appPaths'
+import { bindMusicDownloadWindow, registerMusicDownloadIpc } from './musicDownload'
 
 function getReaderProgressDir(): string {
   return join(app.getPath('userData'), 'reader', 'progress')
@@ -95,6 +99,7 @@ function createWindow() {
       mainWindow?.webContents.toggleDevTools()
     }
   })
+  bindMusicDownloadWindow(mainWindow)
 }
 
 app.whenReady().then(() => {
@@ -132,6 +137,11 @@ app.on('window-all-closed', () => {
   stopClipboardWatch()
   if (process.platform !== 'darwin') app.quit()
 })
+
+registerTtsIpc()
+registerTranslateIpc()
+registerAppPathsIpc()
+registerMusicDownloadIpc()
 
 // ==================== RSA 密钥对（后台预生成） ====================
 
@@ -428,12 +438,20 @@ ipcMain.handle('dialog:openFiles', async (_event, options: {
   return result.filePaths
 })
 
+function resolveSaveDefaultPath(defaultPath?: string): string | undefined {
+  const base = getDialogDefaultDir()
+  if (!defaultPath) return base
+  if (isAbsolute(defaultPath)) return defaultPath
+  return base ? join(base, defaultPath) : defaultPath
+}
+
 // 选择目录
 ipcMain.handle('dialog:openDirectory', async (_event, title?: string) => {
   if (!mainWindow) return null
   const result = await dialog.showOpenDialog(mainWindow, {
     title: title || '选择目录',
-    properties: ['openDirectory']
+    defaultPath: getDialogDefaultDir(),
+    properties: ['openDirectory', 'createDirectory']
   })
   if (result.canceled || result.filePaths.length === 0) return null
   return result.filePaths[0]
@@ -448,7 +466,7 @@ ipcMain.handle('dialog:saveFile', async (_event, options: {
   if (!mainWindow) return null
   const result = await dialog.showSaveDialog(mainWindow, {
     title: options.title || '保存文件',
-    defaultPath: options.defaultPath,
+    defaultPath: resolveSaveDefaultPath(options.defaultPath),
     filters: options.filters
   })
   if (result.canceled || !result.filePath) return null
@@ -538,7 +556,7 @@ ipcMain.handle('ocr:fromDataUrl', async (_event, subcommand: string, dataUrl: st
   if (!match) return { success: false, error: '图片数据格式无效' }
 
   const ext = match[1].toLowerCase().replace('jpeg', 'jpg')
-  const tmpPath = join(app.getPath('temp'), `tusi-ocr-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`)
+  const tmpPath = join(getAppTempDir(), `tusi-ocr-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`)
   try {
     await writeFile(tmpPath, Buffer.from(match[2], 'base64'))
     return await runOcrScript([subcommand, tmpPath])
@@ -593,30 +611,14 @@ ipcMain.handle('color:pick', async () => {
 
 // 检测本机是否可用 ffmpeg
 ipcMain.handle('ffmpeg:check', async (): Promise<{ available: boolean; version: string; error: string }> => {
-  return new Promise((resolve) => {
-    const proc = spawn('ffmpeg', ['-version'])
-    let stdout = ''
-    let stderr = ''
-    proc.stdout.on('data', (data) => { stdout += data.toString() })
-    proc.stderr.on('data', (data) => { stderr += data.toString() })
-    proc.on('close', (code) => {
-      if (code === 0) {
-        const firstLine = (stdout || stderr).split(/\r?\n/)[0] || 'ffmpeg'
-        resolve({ available: true, version: firstLine.trim(), error: '' })
-      } else {
-        resolve({ available: false, version: '', error: stderr.trim() || 'ffmpeg 不可用' })
-      }
-    })
-    proc.on('error', (err) => {
-      resolve({
-        available: false,
-        version: '',
-        error: err.message.includes('ENOENT')
-          ? '未找到 ffmpeg，请安装并加入 PATH 后重启应用'
-          : err.message
-      })
-    })
-  })
+  const versionResult = await runFfmpeg(['-version'])
+  if (!versionResult.success) {
+    return { available: false, version: '', error: versionResult.error || 'ffmpeg 不可用' }
+  }
+  const firstLine = (versionResult.output || versionResult.error).split(/\r?\n/)[0] || 'ffmpeg'
+  const encoder = await detectFfmpegWebpEncoder()
+  const note = encoder === 'none' ? '（无 libwebp，动图将使用备用编码）' : ''
+  return { available: true, version: `${firstLine.trim()}${note}`, error: '' }
 })
 
 // MP4 → 动图 WebP
@@ -1162,7 +1164,10 @@ ipcMain.handle('audio:separate', async (_event, payload: {
     const args = [scriptPath, inputPath, outputDir, mode]
     if (payload.toMp3) args.push('--mp3')
 
-    const proc = spawn(getPythonCmd(), args, { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } })
+    const proc = spawn(getPythonCmd(), args, {
+      env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+      windowsHide: true
+    })
     activeSeparateProc = proc
 
     let buffer = ''
@@ -1673,7 +1678,7 @@ function mergeDashWithFfmpeg(
       '-i', audioPath,
       '-c', 'copy',
       outputPath
-    ])
+    ], { windowsHide: true })
     let stderr = ''
     proc.stderr.on('data', (d) => { stderr += d.toString() })
     proc.on('close', (code) => {
@@ -1729,7 +1734,7 @@ ipcMain.handle('bili:download', async (_event, payload: {
     return { success: false as const, error: '参数缺失' }
   }
   const cookie = String(payload.cookie || '')
-  const tmpDir = join(app.getPath('temp'), `tusi-bili-${Date.now()}`)
+  const tmpDir = join(getAppTempDir(), `tusi-bili-${Date.now()}`)
   try {
     await mkdir(tmpDir, { recursive: true })
     const vPath = join(tmpDir, 'video.m4s')
@@ -2258,7 +2263,10 @@ function getPythonCmd(): string {
 
 function runPythonScript(scriptPath: string, args: string[]): Promise<{ success: boolean; output: string; error: string }> {
   return new Promise((resolve) => {
-    const python = spawn(getPythonCmd(), [scriptPath, ...args], { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } })
+    const python = spawn(getPythonCmd(), [scriptPath, ...args], {
+      env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+      windowsHide: true
+    })
 
     let stdout = ''
     let stderr = ''
@@ -2295,7 +2303,62 @@ function clampInt(n: unknown, min: number, max: number, fallback: number): numbe
   return Math.min(max, Math.max(min, Math.round(v)))
 }
 
-function runFfmpegMp4ToWebp(
+type FfmpegWebpEncoder = 'libwebp' | 'libwebp_anim' | 'none'
+
+let ffmpegWebpEncoderCache: FfmpegWebpEncoder | null = null
+
+async function detectFfmpegWebpEncoder(): Promise<FfmpegWebpEncoder> {
+  if (ffmpegWebpEncoderCache !== null) return ffmpegWebpEncoderCache
+  const result = await runFfmpeg(['-hide_banner', '-encoders'])
+  const text = `${result.output}\n${result.error}`
+  const encoder: FfmpegWebpEncoder = /\slibwebp\s/.test(text)
+    ? 'libwebp'
+    : /\slibwebp_anim\s/.test(text)
+      ? 'libwebp_anim'
+      : 'none'
+  ffmpegWebpEncoderCache = encoder
+  return encoder
+}
+
+function buildMp4ToWebpFilters(fps: number, maxWidth: number): string {
+  const filters: string[] = [`fps=${fps}`]
+  if (maxWidth > 0) {
+    filters.push(`scale='min(${maxWidth},iw)':-1:flags=lanczos`)
+  }
+  return filters.join(',')
+}
+
+function buildMp4InputArgs(inputPath: string, startSec: number, durationSec: number): string[] {
+  const args: string[] = ['-y', '-hide_banner']
+  if (startSec > 0) args.push('-ss', String(startSec))
+  args.push('-i', inputPath)
+  if (durationSec > 0) args.push('-t', String(durationSec))
+  return args
+}
+
+async function encodePngFramesToWebp(
+  frameDir: string,
+  outputPath: string,
+  quality: number,
+  delayMs: number
+): Promise<{ success: boolean; output: string; error: string }> {
+  const frames = (await readdir(frameDir))
+    .filter((name) => /^f\d+\.png$/i.test(name))
+    .sort()
+  if (frames.length === 0) {
+    return { success: false, output: '', error: '未能从视频中提取到帧' }
+  }
+  const buffers: Buffer[] = []
+  for (const name of frames) {
+    buffers.push(await readFile(join(frameDir, name)))
+  }
+  await sharp(buffers, { join: { animated: true }, limitInputPixels: false })
+    .webp({ quality, loop: 0, delay: delayMs })
+    .toFile(outputPath)
+  return { success: true, output: '转换成功', error: '' }
+}
+
+async function runFfmpegMp4ToWebp(
   inputPath: string,
   outputPath: string,
   options: {
@@ -2313,63 +2376,56 @@ function runFfmpegMp4ToWebp(
   const durationSec = typeof options.durationSec === 'number' && options.durationSec > 0
     ? options.durationSec
     : 0
+  const vf = buildMp4ToWebpFilters(fps, maxWidth)
+  const delayMs = Math.max(1, Math.round(1000 / fps))
 
-  const filters: string[] = [`fps=${fps}`]
-  if (maxWidth > 0) {
-    filters.push(`scale='min(${maxWidth},iw)':-1:flags=lanczos`)
+  const encoder = await detectFfmpegWebpEncoder()
+  if (encoder !== 'none') {
+    const args = [
+      ...buildMp4InputArgs(inputPath, startSec, durationSec),
+      '-map', '0:v:0',
+      '-an',
+      '-sn',
+      '-dn',
+      '-vf', vf,
+      '-c:v', encoder,
+      '-lossless', '0',
+      '-q:v', String(quality),
+      '-loop', '0',
+      '-preset', 'default',
+      outputPath
+    ]
+    return runFfmpeg(args)
   }
 
-  const args: string[] = ['-y', '-hide_banner']
-  if (startSec > 0) {
-    args.push('-ss', String(startSec))
+  const tmpDir = join(getAppTempDir(), `tusi-webp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+  try {
+    await mkdir(tmpDir, { recursive: true })
+    const extract = await runFfmpeg([
+      ...buildMp4InputArgs(inputPath, startSec, durationSec),
+      '-map', '0:v:0',
+      '-an',
+      '-sn',
+      '-dn',
+      '-vf', vf,
+      join(tmpDir, 'f%05d.png')
+    ])
+    if (!extract.success) return extract
+    return await encodePngFramesToWebp(tmpDir, outputPath, quality, delayMs)
+  } catch (err) {
+    return {
+      success: false,
+      output: '',
+      error: err instanceof Error ? err.message : String(err)
+    }
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true }).catch(() => undefined)
   }
-  args.push('-i', inputPath)
-  if (durationSec > 0) {
-    args.push('-t', String(durationSec))
-  }
-  args.push(
-    '-vf', filters.join(','),
-    '-an',
-    '-c:v', 'libwebp',
-    '-lossless', '0',
-    '-q:v', String(quality),
-    '-loop', '0',
-    '-preset', 'default',
-    outputPath
-  )
-
-  return new Promise((resolve) => {
-    const proc = spawn('ffmpeg', args)
-    let stdout = ''
-    let stderr = ''
-
-    proc.stdout.on('data', (data) => { stdout += data.toString() })
-    proc.stderr.on('data', (data) => { stderr += data.toString() })
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve({ success: true, output: stdout.trim() || '转换成功', error: '' })
-        return
-      }
-      const errText = stderr.trim() || stdout.trim() || `ffmpeg 退出码 ${code}`
-      resolve({ success: false, output: '', error: errText })
-    })
-
-    proc.on('error', (err) => {
-      resolve({
-        success: false,
-        output: '',
-        error: err.message.includes('ENOENT')
-          ? '未找到 ffmpeg，请安装并加入 PATH 后重启应用'
-          : err.message
-      })
-    })
-  })
 }
 
 function runFfmpeg(args: string[]): Promise<{ success: boolean; output: string; error: string }> {
   return new Promise((resolve) => {
-    const proc = spawn('ffmpeg', args)
+    const proc = spawn('ffmpeg', args, { windowsHide: true })
     let stdout = ''
     let stderr = ''
     proc.stdout.on('data', (data) => { stdout += data.toString() })

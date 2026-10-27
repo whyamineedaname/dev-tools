@@ -21,9 +21,26 @@ const canConvert = computed(() => {
   return !!sourceFile.value && !!targetDir.value && !!outputFileName.value && !converting.value && ffmpegOk.value
 })
 
+// 跨平台路径处理：Windows 用反斜杠，macOS/Linux 用正斜杠
+const pathSep = window.electronAPI.platform === 'win32' ? '\\' : '/'
+
+function dirname(p: string): string {
+  const idx = Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\'))
+  return idx > 0 ? p.substring(0, idx) : p
+}
+
+function basename(p: string): string {
+  const idx = Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\'))
+  return idx >= 0 ? p.substring(idx + 1) : p
+}
+
+function joinPath(dir: string, name: string): string {
+  return dir.replace(/[\\/]+$/, '') + pathSep + name
+}
+
 const outputPath = computed(() => {
   if (!targetDir.value || !outputFileName.value) return ''
-  return `${targetDir.value}\\${outputFileName.value}`
+  return joinPath(targetDir.value, outputFileName.value)
 })
 
 onMounted(async () => {
@@ -49,9 +66,9 @@ async function selectSourceFile() {
   })
   if (!path) return
   sourceFile.value = path
-  const dir = path.substring(0, path.lastIndexOf('\\'))
+  const dir = dirname(path)
   if (dir) targetDir.value = dir
-  const name = path.split('\\').pop() || ''
+  const name = basename(path) || ''
   const nameWithoutExt = name.replace(/\.[^.]+$/, '')
   outputFileName.value = `${nameWithoutExt}.webp`
   resultMsg.value = ''
@@ -105,7 +122,7 @@ async function startConvert() {
   <div class="tool-page">
     <div class="tool-card">
       <h2 class="tool-title">MP4 转动图 WebP</h2>
-      <p class="tool-desc">使用本机 FFmpeg 将视频转为循环播放的动图 WebP</p>
+      <p class="tool-desc">将视频转为循环播放的动图 WebP（FFmpeg 解码，缺 libwebp 时自动备用编码）</p>
 
       <div class="ffmpeg-status" :class="{ ok: ffmpegOk, bad: !ffmpegOk }">
         <span class="label">FFmpeg：</span>
@@ -165,6 +182,7 @@ async function startConvert() {
         <p>提示：</p>
         <ul>
           <li>需本机已安装 FFmpeg，并确保命令行可执行 <code>ffmpeg</code></li>
+          <li>Homebrew 的 FFmpeg 9 通常未编译 libwebp，工具会自动抽帧后编码，无需重装</li>
           <li>帧率越低、宽度越小、质量越低，文件通常越小</li>
           <li>长视频建议设置「截取时长」，避免 WebP 过大</li>
         </ul>

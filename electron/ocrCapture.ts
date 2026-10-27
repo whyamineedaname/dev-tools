@@ -365,19 +365,41 @@ export async function startOcrCapture(mainWindow: BrowserWindow | null): Promise
 
   capturing = true
 
+  const isMac = process.platform === 'darwin'
   const wasMinimized = mainWindow?.isMinimized() ?? false
   const wasVisible = mainWindow?.isVisible() ?? false
 
   try {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.minimize()
-      // 等最小化动画完成，避免截到本应用窗口
+      if (isMac) {
+        // macOS 上 minimize 会播放收起动画且窗口仍占用 Dock，改用 hide()
+        mainWindow.hide()
+      } else {
+        mainWindow.minimize()
+      }
+      // 等窗口隐藏动画完成，避免截到本应用窗口
       await new Promise((r) => setTimeout(r, 200))
     }
 
     const displays = screen.getAllDisplays()
     const preloadPath = join(__dirname, 'ocrCapturePreload.js')
-    const payloads = await captureAllDisplays(displays)
+    let payloads: OverlayPayload[]
+    try {
+      payloads = await captureAllDisplays(displays)
+    } catch (err: unknown) {
+      // macOS 未授予「屏幕录制」权限时截图会失败/全黑，给出明确指引
+      if (isMac) {
+        cleanupOverlays()
+        capturing = false
+        resolveCapture = null
+        const message = err instanceof Error ? err.message : String(err)
+        return {
+          success: false,
+          error: `${message}。请在「系统设置 → 隐私与安全性 → 屏幕录制」中为「兔丝」开启权限后重试`
+        }
+      }
+      throw err
+    }
 
     const result = await new Promise<OcrCaptureResult>((resolve) => {
       resolveCapture = resolve
@@ -420,7 +442,11 @@ export async function startOcrCapture(mainWindow: BrowserWindow | null): Promise
     return { success: false, error: message }
   } finally {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      if (!wasMinimized && wasVisible) {
+      if (isMac) {
+        // macOS：恢复 show 即可（hide 之前的状态）
+        mainWindow.show()
+        mainWindow.focus()
+      } else if (!wasMinimized && wasVisible) {
         mainWindow.restore()
         mainWindow.show()
         mainWindow.focus()

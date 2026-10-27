@@ -7,9 +7,11 @@
 ```
 src/
 ├── config/tools.ts      # 工具 + 分类注册表（唯一真相源）
+├── config/units.ts      # 单位换算数据表（18 类 / 165 单位，全部用精确定义值）
 ├── stores/tabs.ts       # Pinia 标签页状态
 ├── components/          # 布局组件（Sidebar/TabBar）+ tools/* 工具卡片
 ├── types/               # Tool/Tab 类型 + electron.d.ts 全局 Window 类型
+├── utils/               # 纯函数工具（如 unitConvert.ts 换算内核）
 ├── App.vue              # 根：根据 activeTab → toolComponents[component] 动态渲染
 ├── main.ts              # createApp + Pinia 挂载
 └── style.css            # 全局样式
@@ -23,6 +25,7 @@ src/
 | 新增工具的动态映射 | `App.vue` 的 `toolComponents` Record |
 | 标签页增删/激活 | `stores/tabs.ts`（`openTool`/`closeTab`） |
 | 类型定义 | `types/index.ts`；Electron API 类型见 `types/electron.d.ts` |
+| 单位换算数据 / 内核 / 断言 | `config/units.ts`、`utils/unitConvert.ts`、`utils/unitConvert.test.ts` |
 
 ## CONVENTIONS
 - **工具注册流程（新工具三件套）**：① `config/tools.ts` 加 `Tool` 条目；② 在 `components/tools/` 建同名 `.vue`（`component` 字段值）；③ `App.vue` 的 `toolComponents` 注册该组件。

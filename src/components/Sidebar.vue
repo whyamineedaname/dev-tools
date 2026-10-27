@@ -33,6 +33,7 @@ const shortNames: Record<string, string> = {
   mediaTranscode: '转码',
   voiceSeparate: '人声',
   ocr: 'OCR',
+  tts: '语音',
   colorPicker: '取色器',
   removeBg: '去背景',
   qrcode: '二维码',
@@ -44,9 +45,11 @@ const shortNames: Record<string, string> = {
   dnsTool: 'DNS',
   dataSync: '同步',
   biliDownloader: '下载',
+  musicDownload: '音乐',
   loanCalc: '房贷',
   theme: '主题',
-  menu: '菜单'
+  menu: '菜单',
+  fileDir: '目录'
 }
 
 const activeCategory = computed(() =>

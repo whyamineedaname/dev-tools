@@ -5,6 +5,7 @@
 """
 import sys
 import os
+import subprocess
 import hashlib
 
 # 强制 UTF-8 输出：Windows 下 Python 管道默认用 GBK/cp936，会导致 Electron 侧中文乱码
@@ -87,6 +88,81 @@ def ppt_to_pdf_powerpoint(ppt_path: str, pdf_path: str) -> bool:
         del powerpoint
 
 
+WPS_CLI = "/Applications/wpsoffice.app/Contents/MacOS/wpscli"
+
+SOFFICE_CANDIDATES = [
+    "/opt/homebrew/bin/soffice",
+    "/usr/local/bin/soffice",
+    "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+]
+
+
+def find_soffice() -> str:
+    """定位 LibreOffice soffice 可执行文件"""
+    import shutil
+    for c in SOFFICE_CANDIDATES:
+        if os.path.exists(c):
+            return c
+    w = shutil.which("soffice")
+    return w or ""
+
+
+def ppt_to_pdf_libreoffice(ppt_path: str, pdf_path: str) -> bool:
+    """PPT/PPTX 转 PDF（LibreOffice headless，macOS 首选，无沙盒/登录限制）"""
+    soffice = find_soffice()
+    if not soffice:
+        return False
+    try:
+        out_dir = os.path.dirname(os.path.abspath(pdf_path))
+        os.makedirs(out_dir, exist_ok=True)
+        result = subprocess.run(
+            [soffice, "--headless", "--convert-to", "pdf", "--outdir", out_dir, ppt_path],
+            capture_output=True, text=True, timeout=300,
+        )
+        if result.returncode != 0:
+            print(f"LibreOffice 转换失败(code={result.returncode}): {(result.stderr or '')[:200]}", file=sys.stderr)
+            return False
+        # soffice 输出文件名固定为 <源文件名>.pdf
+        generated = os.path.join(out_dir, os.path.splitext(os.path.basename(ppt_path))[0] + ".pdf")
+        if not os.path.exists(generated):
+            print("LibreOffice 转换后未找到输出 PDF", file=sys.stderr)
+            return False
+        if os.path.abspath(generated) != os.path.abspath(pdf_path):
+            if os.path.exists(pdf_path):
+                os.remove(pdf_path)
+            os.rename(generated, pdf_path)
+        return True
+    except Exception as e:
+        print(f"LibreOffice 转换异常: {e}", file=sys.stderr)
+        return False
+
+
+def ppt_to_pdf_wps(ppt_path: str, pdf_path: str) -> bool:
+    """PPT/PPTX 转 PDF（macOS WPS CLI）"""
+    try:
+        if not os.path.exists(WPS_CLI):
+            return False
+        # 目标文件若存在，wpscli 会自动重命名而非覆盖，先删除以保证输出路径一致
+        if os.path.exists(pdf_path):
+            os.remove(pdf_path)
+        result = subprocess.run(
+            [WPS_CLI, "ppt2pdf", ppt_path, "-o", pdf_path, "--json"],
+            capture_output=True, text=True, timeout=300,
+        )
+        if result.returncode == 0 and os.path.exists(pdf_path):
+            return True
+        # 100/101 = 未登录 WPS 账号 / 无 VIP 权限
+        err = (result.stderr or result.stdout or "").strip()
+        if result.returncode in (100, 101):
+            print("WPS 转换需要登录账号并开通 VIP 权限", file=sys.stderr)
+        else:
+            print(f"WPS 转换失败(code={result.returncode}): {err[:200]}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"WPS 转换异常: {e}", file=sys.stderr)
+        return False
+
+
 def pptx_to_pdf_pure_python(pptx_path: str, pdf_path: str) -> bool:
     """PPTX 纯 Python 转换"""
     try:
@@ -105,8 +181,8 @@ def pptx_to_pdf_pure_python(pptx_path: str, pdf_path: str) -> bool:
             except:
                 pass
 
-            slide_width = slide.slide_width.inches * 72
-            slide_height = slide.slide_height.inches * 72
+            slide_width = prs.slide_width.inches * 72
+            slide_height = prs.slide_height.inches * 72
 
             scale_x = a4_width / slide_width
             scale_y = a4_height / slide_height
@@ -176,16 +252,19 @@ def image_to_pdf(image_path: str, pdf_path: str) -> bool:
 
 
 def check_powerpoint_availability() -> bool:
-    if os.name != 'nt':
-        return False
-    try:
-        import win32com.client
-        powerpoint = win32com.client.DispatchEx("PowerPoint.Application")
-        powerpoint.Quit()
-        del powerpoint
-        return True
-    except Exception:
-        return False
+    """检测本机可用的 Office 应用（Windows: PowerPoint COM；macOS: WPS CLI）"""
+    if os.name == 'nt':
+        try:
+            import win32com.client
+            powerpoint = win32com.client.DispatchEx("PowerPoint.Application")
+            powerpoint.Quit()
+            del powerpoint
+            return True
+        except Exception:
+            return False
+    else:
+        # macOS：检查 WPS 命令行工具
+        return os.path.exists(WPS_CLI)
 
 
 def convert_to_pdf(input_path: str, output_path: str) -> bool:
@@ -205,14 +284,29 @@ def convert_to_pdf(input_path: str, output_path: str) -> bool:
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
 
     if ext == '.ppt':
-        return ppt_to_pdf_powerpoint(input_path, output_path)
+        if os.name == 'nt':
+            return ppt_to_pdf_powerpoint(input_path, output_path)
+        # macOS：.ppt 优先 LibreOffice，其次 WPS
+        if ppt_to_pdf_libreoffice(input_path, output_path):
+            return True
+        if ppt_to_pdf_wps(input_path, output_path):
+            return True
+        print("LibreOffice/WPS 转换均失败，macOS 上 .ppt 暂无其他转换方案", file=sys.stderr)
+        return False
 
     elif ext == '.pptx':
-        powerpoint_available = check_powerpoint_availability()
-        if powerpoint_available:
+        if os.name == 'nt':
             if ppt_to_pdf_powerpoint(input_path, output_path):
                 return True
-            print("PowerPoint 失败，尝试纯 Python 转换...", file=sys.stderr)
+            print("本机 Office 转换失败，尝试纯 Python 转换...", file=sys.stderr)
+            return pptx_to_pdf_pure_python(input_path, output_path)
+        # macOS：LibreOffice → WPS → 纯 Python 逐级降级
+        if ppt_to_pdf_libreoffice(input_path, output_path):
+            return True
+        print("LibreOffice 转换失败，尝试 WPS...", file=sys.stderr)
+        if ppt_to_pdf_wps(input_path, output_path):
+            return True
+        print("本机 LibreOffice/WPS 转换失败，尝试纯 Python 转换...", file=sys.stderr)
         return pptx_to_pdf_pure_python(input_path, output_path)
 
     elif ext in ('.jpg', '.jpeg', '.png'):

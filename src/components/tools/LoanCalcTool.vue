@@ -64,20 +64,37 @@ const activeTab = ref<'monthly' | 'yearly'>('monthly')
 const exporting = ref(false)
 const exportStatus = ref<'success' | 'error' | ''>('')
 
-/** 中文字体 base64 缓存（simhei.ttf，模块级只读一次） */
+/** 中文字体 base64 缓存（模块级只读一次，读取失败则为 null） */
 let cnFontBase64: string | null = null
 let cnFontChecked = false
+
+/** 各平台中文字体候选路径（依次尝试，取第一个读取成功者） */
+const CN_FONT_CANDIDATES: Record<string, string[]> = {
+  win32: ['C:\\Windows\\Fonts\\simhei.ttf'],
+  // macOS 系统自带 Arial Unicode（TTF 含 CJK，jsPDF 可直接嵌入）；
+  // 若该字体不存在则尝试用户字体目录的常见黑体
+  darwin: [
+    '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
+    '/Library/Fonts/Arial Unicode.ttf'
+  ],
+  linux: ['/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc']
+}
 
 async function loadCnFont(): Promise<string | null> {
   if (cnFontChecked) return cnFontBase64
   cnFontChecked = true
-  try {
-    const res = await window.electronAPI.file.readBinary('C:\\Windows\\Fonts\\simhei.ttf')
-    if (res.success && res.base64) {
-      cnFontBase64 = res.base64
+  const platform = window.electronAPI.platform
+  const candidates = CN_FONT_CANDIDATES[platform] ?? []
+  for (const fontPath of candidates) {
+    try {
+      const res = await window.electronAPI.file.readBinary(fontPath)
+      if (res.success && res.base64) {
+        cnFontBase64 = res.base64
+        break
+      }
+    } catch {
+      // 该候选不可读，继续尝试下一个
     }
-  } catch {
-    cnFontBase64 = null
   }
   return cnFontBase64
 }

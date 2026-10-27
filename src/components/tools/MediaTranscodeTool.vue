@@ -36,9 +36,16 @@ const canConvert = computed(
     ffmpegOk.value
 )
 
+// 跨平台路径处理：Windows 用反斜杠，macOS/Linux 用正斜杠
+const pathSep = window.electronAPI.platform === 'win32' ? '\\' : '/'
+
+function joinPath(dir: string, name: string): string {
+  return dir.replace(/[\\/]+$/, '') + pathSep + name
+}
+
 const outputPath = computed(() => {
   if (!targetDir.value || !outputFileName.value) return ''
-  return `${targetDir.value}\\${outputFileName.value}`
+  return joinPath(targetDir.value, outputFileName.value)
 })
 
 function defaultExt(m: Mode): string {

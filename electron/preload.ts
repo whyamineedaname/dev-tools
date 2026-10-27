@@ -71,6 +71,87 @@ contextBridge.exposeInMainWorld('electronAPI', {
     qrcode: (imagePath: string) =>
       ipcRenderer.invoke('python:ocrQrcode', imagePath)
   },
+  tts: {
+    probe: () => ipcRenderer.invoke('tts:probe'),
+    downloadModel: () => ipcRenderer.invoke('tts:downloadModel'),
+    list: () => ipcRenderer.invoke('tts:list'),
+    import: (payload: {
+      name: string
+      sourcePath: string
+      transcript: string
+      note?: string
+    }) => ipcRenderer.invoke('tts:import', payload),
+    update: (payload: { id: string; name: string; transcript: string; note?: string }) =>
+      ipcRenderer.invoke('tts:update', payload),
+    delete: (id: string) => ipcRenderer.invoke('tts:delete', id),
+    readRef: (id: string) => ipcRenderer.invoke('tts:readRef', id),
+    setOutputDir: (dir: string) => ipcRenderer.invoke('tts:setOutputDir', dir),
+    synthesize: (payload: {
+      voiceId: string
+      text: string
+      outputDir: string
+      fileName: string
+      format: 'wav' | 'mp3'
+      overwrite?: boolean
+    }) => ipcRenderer.invoke('tts:synthesize', payload),
+    stopWorker: () => ipcRenderer.invoke('tts:stopWorker'),
+    onProgress: (callback: (progress: { phase: string; percent?: number; message?: string }) => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        progress: { phase: string; percent?: number; message?: string }
+      ) => callback(progress)
+      ipcRenderer.on('tts:progress', listener)
+      return () => ipcRenderer.removeListener('tts:progress', listener)
+    }
+  },
+  translate: {
+    scan: () => ipcRenderer.invoke('translate:scan'),
+    probe: (baseUrl: string) => ipcRenderer.invoke('translate:probe', baseUrl),
+    run: (payload: {
+      requestId: string
+      baseUrl: string
+      kind: 'ollama' | 'openai'
+      model: string
+      text: string
+      sourceLang?: string
+      targetLang: string
+      style?: string
+      keepCode?: boolean
+      glossary?: string
+      temperature?: number
+    }) => ipcRenderer.invoke('translate:run', payload),
+    cancel: (requestId: string) => ipcRenderer.invoke('translate:cancel', requestId),
+    clipboardRead: () => ipcRenderer.invoke('translate:clipboardRead'),
+    clipboardWrite: (text: string) => ipcRenderer.invoke('translate:clipboardWrite', text),
+    onProgress: (callback: (progress: {
+      requestId: string
+      index: number
+      total: number
+    }) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, progress: {
+        requestId: string
+        index: number
+        total: number
+      }) => callback(progress)
+      ipcRenderer.on('translate:progress', listener)
+      return () => ipcRenderer.removeListener('translate:progress', listener)
+    },
+    onDelta: (callback: (delta: {
+      requestId: string
+      index: number
+      total: number
+      delta: string
+    }) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, delta: {
+        requestId: string
+        index: number
+        total: number
+        delta: string
+      }) => callback(delta)
+      ipcRenderer.on('translate:delta', listener)
+      return () => ipcRenderer.removeListener('translate:delta', listener)
+    }
+  },
   color: {
     pick: () => ipcRenderer.invoke('color:pick')
   },
@@ -233,5 +314,43 @@ contextBridge.exposeInMainWorld('electronAPI', {
   shell: {
     openPath: (targetPath: string) =>
       ipcRenderer.invoke('shell:openPath', targetPath)
+  },
+  music: {
+    probe: () => ipcRenderer.invoke('music:probe'),
+    search: (payload: {
+      keyword: string
+      sources: string[]
+      limit?: number
+      mode?: 'song' | 'playlist'
+      cookie?: string
+    }) => ipcRenderer.invoke('music:search', payload),
+    download: (payload: {
+      songs: unknown[]
+      outputDir: string
+      sources?: string[]
+      limit?: number
+      cookie?: string
+    }) => ipcRenderer.invoke('music:download', payload),
+    cancel: () => ipcRenderer.invoke('music:cancel'),
+    onProgress: (callback: (progress: {
+      type: 'progress'
+      message: string
+      current: number
+      total: number
+    }) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, progress: {
+        type: 'progress'
+        message: string
+        current: number
+        total: number
+      }) => callback(progress)
+      ipcRenderer.on('music:progress', listener)
+      return () => ipcRenderer.removeListener('music:progress', listener)
+    }
+  },
+  appPaths: {
+    get: () => ipcRenderer.invoke('appPaths:get'),
+    setTempDir: (dir: string) => ipcRenderer.invoke('appPaths:setTempDir', dir),
+    resetTempDir: () => ipcRenderer.invoke('appPaths:resetTempDir')
   }
 })

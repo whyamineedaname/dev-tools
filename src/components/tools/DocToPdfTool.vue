@@ -12,9 +12,26 @@ const canConvert = computed(() => {
   return sourceFile.value && targetDir.value && !converting.value
 })
 
+// 跨平台路径处理：Windows 用反斜杠，macOS/Linux 用正斜杠
+const pathSep = window.electronAPI.platform === 'win32' ? '\\' : '/'
+
+function dirname(p: string): string {
+  const idx = Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\'))
+  return idx > 0 ? p.substring(0, idx) : p
+}
+
+function basename(p: string): string {
+  const idx = Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\'))
+  return idx >= 0 ? p.substring(idx + 1) : p
+}
+
+function joinPath(dir: string, name: string): string {
+  return dir.replace(/[\\/]+$/, '') + pathSep + name
+}
+
 const outputPath = computed(() => {
   if (!targetDir.value || !outputFileName.value) return ''
-  return `${targetDir.value}\\${outputFileName.value}`
+  return joinPath(targetDir.value, outputFileName.value)
 })
 
 async function selectSourceFile() {
@@ -27,10 +44,10 @@ async function selectSourceFile() {
   })
   if (path) {
     sourceFile.value = path
-    // 自动填充输出目录：源文件所在目录
-    const dir = path.substring(0, path.lastIndexOf('\\'))
+    // 自动填充输出目录：源文件所在目录（跨平台）
+    const dir = dirname(path)
     if (dir) targetDir.value = dir
-    const name = path.split('\\').pop() || ''
+    const name = basename(path) || ''
     const nameWithoutExt = name.replace(/\.[^.]+$/, '')
     outputFileName.value = `${nameWithoutExt}.pdf`
     resultMsg.value = ''

@@ -1,6 +1,6 @@
 {
   "name": "dev-tools",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "兔丝 - 跨平台桌面工具箱",
   "author": "whyamineedaname",
   "main": "dist-electron/main.js",
@@ -8,6 +8,8 @@
     "dev": "concurrently -k -n VITE,MAIN,ELECTRON -c blue,green,yellow \"vite\" \"npm run dev:electron\" \"wait-on tcp:33445 && cross-env NODE_ENV=development electron .\"",
     "dev:electron": "node -e \"require('fs').cpSync('electron/assets','dist-electron/assets',{recursive:true})\" && esbuild electron/main.ts electron/preload.ts electron/colorPickerPreload.ts electron/ocrCapturePreload.ts --bundle --outdir=dist-electron --platform=node --external:electron --external:sharp --watch",
     "typecheck": "vue-tsc --noEmit",
+    "test": "npm run test:units",
+    "test:units": "esbuild src/utils/unitConvert.test.ts --bundle --platform=node --format=cjs --outfile=.tmp-test/unitConvert.test.cjs && node --test .tmp-test/unitConvert.test.cjs",
     "build": "vite build && npm run build:electron && electron-builder",
     "build:electron": "esbuild electron/main.ts electron/preload.ts electron/colorPickerPreload.ts electron/ocrCapturePreload.ts --bundle --outdir=dist-electron --platform=node --external:electron --external:sharp --minify && node -e \"require('fs').cpSync('electron/assets','dist-electron/assets',{recursive:true})\""
   },

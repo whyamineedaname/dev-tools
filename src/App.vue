@@ -30,9 +30,14 @@ import PortTool from '@/components/tools/PortTool.vue'
 import DnsTool from '@/components/tools/DnsTool.vue'
 import DataSyncTool from '@/components/tools/DataSyncTool.vue'
 import BiliDownloaderTool from '@/components/tools/BiliDownloaderTool.vue'
+import MusicDownloadTool from '@/components/tools/MusicDownloadTool.vue'
 import ThemeTool from '@/components/tools/ThemeTool.vue'
 import MenuTool from '@/components/tools/MenuTool.vue'
+import FileDirTool from '@/components/tools/FileDirTool.vue'
 import LoanCalcTool from '@/components/tools/LoanCalcTool.vue'
+import UnitConvertTool from '@/components/tools/UnitConvertTool.vue'
+import TtsTool from '@/components/tools/TtsTool.vue'
+import TranslateTool from '@/components/tools/TranslateTool.vue'
 import type { Component } from 'vue'
 
 const tabsStore = useTabsStore()
@@ -69,9 +74,14 @@ const toolComponents: Record<string, Component> = {
   DnsTool,
   DataSyncTool,
   BiliDownloaderTool,
+  MusicDownloadTool,
   ThemeTool,
   MenuTool,
-  LoanCalcTool
+  FileDirTool,
+  LoanCalcTool,
+  UnitConvertTool,
+  TtsTool,
+  TranslateTool
 }
 </script>
 

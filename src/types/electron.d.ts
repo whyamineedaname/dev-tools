@@ -181,6 +181,98 @@ declare global {
           error?: string
         }>
       }
+      tts: {
+        probe: () => Promise<
+          | {
+              success: true
+              device?: string
+              model?: string
+              modelReady: boolean
+              cosyvoiceImportOk: boolean
+              message: string
+              lastOutputDir: string
+              desktopDir: string
+              ffmpegOk: boolean
+            }
+          | {
+              success: false
+              error: string
+              lastOutputDir?: string
+              desktopDir?: string
+              ffmpegOk?: boolean
+            }
+        >
+        downloadModel: () => Promise<{ success: boolean; error?: string }>
+        list: () => Promise<
+          | {
+              success: true
+              voices: Array<{
+                id: string
+                name: string
+                transcript: string
+                note: string
+                durationMs: number
+                createdAt: number
+                updatedAt: number
+                missingFile?: boolean
+              }>
+            }
+          | { success: false; error: string }
+        >
+        import: (payload: {
+          name: string
+          sourcePath: string
+          transcript: string
+          note?: string
+        }) => Promise<
+          | {
+              success: true
+              voice: {
+                id: string
+                name: string
+                transcript: string
+                note: string
+                durationMs: number
+                createdAt: number
+                updatedAt: number
+                missingFile?: boolean
+              }
+            }
+          | { success: false; error: string }
+        >
+        update: (payload: {
+          id: string
+          name: string
+          transcript: string
+          note?: string
+        }) => Promise<{ success: boolean; error?: string }>
+        delete: (id: string) => Promise<{ success: boolean; error?: string }>
+        readRef: (id: string) => Promise<
+          | { success: true; mime: string; base64: string }
+          | { success: false; error: string }
+        >
+        setOutputDir: (dir: string) => Promise<
+          | { success: true; lastOutputDir: string }
+          | { success: false; error: string }
+        >
+        synthesize: (payload: {
+          voiceId: string
+          text: string
+          outputDir: string
+          fileName: string
+          format: 'wav' | 'mp3'
+          overwrite?: boolean
+        }) => Promise<
+          | { success: true; outputPath: string }
+          | { success: false; error: string }
+        >
+        stopWorker: () => Promise<{ success: boolean }>
+        onProgress: (callback: (progress: {
+          phase: string
+          percent?: number
+          message?: string
+        }) => void) => () => void
+      }
       color: {
         pick: () => Promise<{
           success: boolean
@@ -530,6 +622,123 @@ declare global {
           error: string
         }>
       }
+      music: {
+        probe: () => Promise<{
+          success: true
+          musicdlOk: boolean
+          version?: string
+          error?: string
+          sources: Array<{ id: string; name: string }>
+          defaultOutputDir: string
+        }>
+        search: (payload: {
+          keyword: string
+          sources: string[]
+          limit?: number
+          mode?: 'song' | 'playlist'
+          cookie?: string
+        }) => Promise<
+          | { success: true; count: number; songs: MusicDownloadSong[] }
+          | { success: false; error: string }
+        >
+        download: (payload: {
+          songs: MusicDownloadSong[]
+          outputDir: string
+          sources?: string[]
+          limit?: number
+          cookie?: string
+        }) => Promise<
+          | {
+              success: true
+              count: number
+              files: Array<{
+                name: string
+                path: string
+                lyricPath?: string
+                songName: string
+                singers: string
+              }>
+              errors: string[]
+              outputDir: string
+            }
+          | { success: false; error: string }
+        >
+        cancel: () => Promise<{ success: true } | { success: false; error: string }>
+        onProgress: (callback: (progress: {
+          type: 'progress'
+          message: string
+          current: number
+          total: number
+        }) => void) => () => void
+      }
+      translate: {
+        scan: () => Promise<{ success: true; services: TranslateServiceInfo[] }>
+        probe: (baseUrl: string) => Promise<{ success: true; service: TranslateServiceInfo }>
+        run: (payload: {
+          requestId: string
+          baseUrl: string
+          kind: 'ollama' | 'openai'
+          model: string
+          text: string
+          sourceLang?: string
+          targetLang: string
+          style?: string
+          keepCode?: boolean
+          glossary?: string
+          temperature?: number
+        }) => Promise<TranslateRunResult>
+        cancel: (requestId: string) => Promise<{ success: boolean; error?: string }>
+        clipboardRead: () => Promise<{ success: true; text: string }>
+        clipboardWrite: (text: string) => Promise<{ success: true }>
+        onProgress: (
+          callback: (progress: TranslateProgressEvent) => void
+        ) => () => void
+        onDelta: (callback: (delta: TranslateDeltaEvent) => void) => () => void
+      }
+      appPaths: {
+        get: () => Promise<{
+          tempDir: string | null
+          resolvedTempDir: string
+          systemTempDir: string
+          userDataDir: string
+          isCustom: boolean
+          fallback: boolean
+          fallbackReason: string
+        }>
+        setTempDir: (dir: string) => Promise<
+          | {
+              success: true
+              tempDir: string | null
+              resolvedTempDir: string
+              systemTempDir: string
+              userDataDir: string
+              isCustom: boolean
+              fallback: boolean
+              fallbackReason: string
+            }
+          | {
+              success: false
+              error: string
+              tempDir: string | null
+              resolvedTempDir: string
+              systemTempDir: string
+              userDataDir: string
+              isCustom: boolean
+              fallback: boolean
+              fallbackReason: string
+            }
+        >
+        resetTempDir: () => Promise<{
+          success: true
+          tempDir: string | null
+          resolvedTempDir: string
+          systemTempDir: string
+          userDataDir: string
+          isCustom: boolean
+          fallback: boolean
+          fallbackReason: string
+        }>
+      }
     }
   }
 
@@ -538,5 +747,70 @@ declare global {
     name: string
     value: string
     group: '相机' | '拍摄参数' | '时间' | '图像' | 'GPS'
+  }
+
+  /** 本地翻译：一个可用的本地模型 */
+  interface TranslateModelInfo {
+    id: string
+    label: string
+    size?: string
+    family?: string
+  }
+
+  /** 本地翻译：一个本机推理服务的探测结果 */
+  interface TranslateServiceInfo {
+    id: string
+    label: string
+    kind: 'ollama' | 'openai'
+    baseUrl: string
+    hint: string
+    ok: boolean
+    resolvedBaseUrl?: string
+    models?: TranslateModelInfo[]
+    error?: string
+  }
+
+  interface TranslateProgressEvent {
+    requestId: string
+    index: number
+    total: number
+  }
+
+  interface TranslateDeltaEvent extends TranslateProgressEvent {
+    delta: string
+  }
+
+  type TranslateRunResult =
+    | {
+        success: true
+        requestId: string
+        text: string
+        elapsedMs: number
+        chunks: number
+        model: string
+        sourceChars: number
+      }
+    | {
+        success: false
+        requestId: string
+        error: string
+        canceled: boolean
+        text: string
+        elapsedMs: number
+      }
+
+  interface MusicDownloadSong {
+    song_name: string
+    singers?: string | string[]
+    singersText?: string
+    album?: string
+    source?: string
+    sourceLabel?: string
+    file_size?: string
+    duration?: string
+    ext?: string
+    cover?: string
+    identifier?: string
+    [key: string]: unknown
   }
 }
