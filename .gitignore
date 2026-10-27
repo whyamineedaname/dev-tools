@@ -54,3 +54,4 @@ __pycache__/
 
 # 本机推送用的 SSH 密钥（勿提交）
 /.deploy-keys/
+/.build-cache/
