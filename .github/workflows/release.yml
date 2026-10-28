@@ -49,6 +49,8 @@ jobs:
           echo "sharp=${SHARP_VER} libvips=${LIBVIPS_VER}"
           mv node_modules/@img "${RUNNER_TEMP}/img-arm64"
           mkdir -p node_modules/@img
+          # @img/colour 是 sharp 的必需依赖（与平台无关），必须保留
+          cp -R "${RUNNER_TEMP}/img-arm64/colour" node_modules/@img/colour
           for spec in "sharp-darwin-x64:${SHARP_VER}" "sharp-libvips-darwin-x64:${LIBVIPS_VER}"; do
             pkg="${spec%%:*}"
             ver="${spec##*:}"
