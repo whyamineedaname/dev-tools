@@ -55,3 +55,6 @@ __pycache__/
 # 本机推送用的 SSH 密钥（勿提交）
 /.deploy-keys/
 /.build-cache/
+
+# 开发文档（仅本地保留，不入库）
+/docs/
